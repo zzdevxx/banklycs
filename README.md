@@ -3,11 +3,13 @@
 [![Catalog](https://img.shields.io/badge/Catalog-24%2C556%20Songs-blue?style=flat-square&logo=musicbrainz)](https://github.com/zzdevxx/banklycs)
 [![Database](https://img.shields.io/badge/Database-SQLite%20FTS5%20(44MB)-success?style=flat-square&logo=sqlite)](https://github.com/zzdevxx/banklycs)
 [![Target](https://img.shields.io/badge/Target-ProPresenter%207-orange?style=flat-square)](https://renewedvision.com/propresenter/)
+[![Live Portal](https://img.shields.io/badge/Live%20Portal-GitHub%20Pages-brightgreen?style=flat-square&logo=githubpages)](https://zzdevxx.github.io/banklycs-download/)
 [![Engine](https://img.shields.io/badge/Engine-C%23%20.NET%208%20Native-purple?style=flat-square&logo=dotnet)](https://github.com/zzdevxx/banklycs)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 > **Koleksi 24.556 Lagu Rohani & Himne Siap Tayang untuk ProPresenter 7.**  
-> Dirancang khusus untuk tim multimedia gereja, operator proyektor, dan worship leader agar **tidak perlu lagi mencari & *copy-paste* lirik dari browser saat ibadah.**
+> Dirancang khusus untuk tim multimedia gereja, operator proyektor, dan worship leader agar **tidak perlu lagi mencari & *copy-paste* lirik dari browser saat ibadah.**  
+> 🌐 **Live Portal & Web Simulator:** [https://zzdevxx.github.io/banklycs-download/](https://zzdevxx.github.io/banklycs-download/)
 
 ---
 
