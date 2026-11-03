@@ -1,9 +1,9 @@
 @echo off
-title ProPresenter LyricBanks - GUI Launcher
+title Banklycs - GUI Launcher
 cd /d "%~dp0"
 
 echo ==============================================================================
-echo   PROPRESENTER LYRICBANKS - PLAYLIST BUILDER GUI
+echo   BANKLYCS - PLAYLIST BUILDER FOR PROPRESENTER
 echo ==============================================================================
 echo Menjalankan server lokal di latar belakang...
 

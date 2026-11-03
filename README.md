@@ -1,4 +1,4 @@
-# ProPresenter Lyric Banks 🎵
+# Banklycs 🎵
 
 > **Koleksi 20.300+ Lagu Rohani & Himne Siap Tayang untuk ProPresenter 7.**  
 > Dirancang khusus untuk tim multimedia gereja, operator proyektor, dan worship leader agar **tidak perlu lagi mencari & *copy-paste* lirik dari browser saat ibadah.**
@@ -81,11 +81,13 @@ Anda bisa menambahkan lagu karya gereja lokal atau aransemen baru dengan mudah:
 ## 📂 Struktur Repositori
 
 ```
-propresenter-lyricbanks/
+banklycs/
 ├── TXT/                 # Master file lirik (.txt murni, flat, 20.300+ file)
 ├── PRO/                 # Output binary ProPresenter 7 (.pro)
 ├── Engine/              # ProEngine (.NET 8 C# compiler, source code, & cache)
 ├── Tools/               # Utility Python (Scraper, Validator, Enforcer rules)
+├── gui/                 # Studio Console Web UI (Server & Frontend)
+├── Start-GUI.bat        # Launcher aplikasi GUI 1-klik
 ├── Generate.ps1         # Script runner utama satu klik
 ├── Generate.md          # Doktrin lengkap & Golden Rules teknis format lirik
 ├── HANDOFF.md           # Log catatan pengembangan & checklist rilis

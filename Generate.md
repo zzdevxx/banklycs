@@ -1,5 +1,5 @@
 # PROPRESENTER 7 — MASTER BANKS (Panduan Tunggal)
-> **Repo**: `propresenter-lyricbanks` (portable — semua tool resolve path relatif)
+> **Repo**: `banklycs` (portable — semua tool resolve path relatif)
 > **Bank lirik**: `TXT\` — **20.301 lagu, satu folder datar, TANPA subfolder**
 > **Output**: `PRO\` → ProPresenter Library `Banks` (flat, nama file = judul lagu)
 > **Satu klik rebuild**: `.\Generate.ps1`
