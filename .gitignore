@@ -1,5 +1,5 @@
 # ==============================================================================
-# ProPresenter Lyric Banks - .gitignore
+# Banklycs - .gitignore
 # ==============================================================================
 
 # OS & Environment
@@ -25,12 +25,14 @@ __pycache__/
 *.log
 
 # Engine Output & Logs
-Engine/last_errors.txt
+engine/last_errors.txt
 
 # Generated Presentations (Binary Protobuf)
-# Folder PRO dapat di-generate ulang kapan saja via .\Generate.ps1
-PRO/*.pro
-!PRO/.gitkeep
+# File .pro dapat di-generate ulang kapan saja via engine
+engine/PRO/*.pro
+!engine/PRO/.gitkeep
+PRO
+TXT
 
 # Archives & Large Backups
 *.zip

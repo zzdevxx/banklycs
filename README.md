@@ -19,49 +19,76 @@
     - **BE** (Buku Ende HKBP Batak) — 832 lagu
     - **NNBT** (Nyanyian Baru Bagi Tuhan) — 44 lagu
     - **Kidung Pasamuwan Jawi** — 36 lagu
+- **Studio Console GUI (Anti-Lag & Anti-Crash)**:
+  - Antarmuka *dark mode* berkecepatan tinggi tanpa dependensi rumit.
+  - Pencarian lirik super cepat (<2 milidetik) untuk 20.000+ lagu.
+  - Tinjauan lirik langsung (*live slide inspector*) dengan ukuran font 18px yang jelas dan terbaca.
+  - Penyusun rundown ibadah dengan fitur **1-Klik Inject ke ProPresenter**.
 - **Standar Panggung Profesional**:
   - Maksimal **2 baris teks per slide** (mudah dibaca jemaat dan pemusik).
   - Menggunakan tema panggung teruji: Font `CMGSans-Bold`, ukuran font proporsional (fs134), Canvas 1920x1080.
   - Slide pertama otomatis berupa slide **`BLANK`** berlabel judul lagu.
   - Header bagian terstandarisasi (`VERSE`, `CHORUS`, `PRE-CHORUS`, `BRIDGE`, dll.).
-- **Engine Kompilasi Berkecepatan Tinggi (.NET 8)**:
-  - Didukung engine kompilasi berbasis C# yang langsung menghasilkan file binary Protobuf `.pro` resmi ProPresenter 7.
-  - **Inkremental & Caching SHA-256**: Kompilasi puluhan ribu lagu hanya butuh **1-2 detik** untuk mendeteksi lagu baru/berubah.
-  - **Playlist Ibadah Aman**: Mode inkremental tidak akan menghapus atau mereset playlist ibadah aktif Anda.
-- **Pencarian Cepat (Zero Confusion)**:
-  - Seluruh file berada dalam folder datar (*flat*) tanpa subfolder rumit. Cukup tekan `Ctrl + F` di ProPresenter dan ketik judul lagu atau kode buku (mis. `KJ 458`, `BE 234`).
 
 ---
 
 ## 🚀 Panduan Memulai Cepat (Quick Start)
 
-### 1. Menggunakan GUI Playlist Builder (Direkomendasikan ⭐)
+### Syarat Sistem
+- **Windows 10 / 11**
+- **ProPresenter 7**
+- **Python 3.10+**
+
+### Cara Menjalankan Aplikasi
 Cukup **double-click** file:
 ```
-Start-GUI.bat
+Start.bat
 ```
-- Aplikasi **Studio Console** akan langsung terbuka di layar laptop Anda (antarmuka dark grey berkecepatan tinggi, anti-lag).
-- Cari lagu dari 20.301 database master secara instan (<2 milidetik).
-- Tinjau lirik bait per bait pada panel tengah (*live slide inspector*).
-- Susun daftar lagu ibadah pada panel kanan, lalu klik tombol **`INJECT KE PROPRESENTER`**.
-- Buka ProPresenter 7 — Playlist ibadah langsung tersedia dan ProPresenter terbuka dalam **1 detik tanpa lag maupun crash!**
+1. Aplikasi **Studio Console** akan langsung terbuka di layar laptop Anda.
+2. Ketik judul lagu / artis / nomor buku (misal `KJ 392`, `BE 210`, atau `Darah-Mu Yesus`).
+3. Klik tombol `+ TAMBAH KE RUNDOWN` untuk menyusun lagu ibadah minggu ini.
+4. Klik tombol **`INJECT KE PROPRESENTER`**.
+5. Buka ProPresenter 7 — Playlist ibadah langsung tersedia dan ProPresenter terbuka dalam **1 detik tanpa lag maupun crash!**
 
-### 2. Sinkronisasi Manual Engine (CLI)
-Jika ingin mengompilasi ulang database `.pro`:
-```powershell
-powershell -ExecutionPolicy Bypass -File .\Generate.ps1
+---
+
+## 📂 Struktur Repositori Bersih
+
+```text
+banklycs/
+│
+├── 📂 database/             ← SATU-SATUNYA tempat lirik master (.txt ramah Notepad & Git)
+│   ├── Darah-Mu Yesus - JPCC Worship.txt
+│   ├── KJ 392 - 'Ku Berbahagia.txt
+│   └── ... (20.301 lagu master)
+│
+├── 📂 app/                  ← Antarmuka GUI Studio Console (server + web UI)
+│   ├── server.py
+│   ├── index.html
+│   ├── style.css
+│   └── app.js
+│
+├── 📂 engine/               ← Compiler C# .NET 8 & internal cache ProPresenter
+│   ├── ProEngine.exe
+│   ├── Src/
+│   └── PRO/                 ← Cache file presentasi binary (.pro) terisolasi
+│
+├── 📂 tools/                ← Skrip scraper & audit (khusus developer/kontributor)
+│   ├── scrape_psalmnote.py
+│   ├── scrape_buku_ende.py
+│   └── ...
+│
+├── 🚀 Start.bat             ← SATU-SATUNYA file yang perlu diklik oleh user awam!
+└── 📄 README.md             ← Panduan pemakaian ini
 ```
 
 ---
 
 ## ✍️ Cara Menambah Lagu Baru
 
-Anda bisa menambahkan lagu karya gereja lokal atau aransemen baru dengan mudah:
-
-1. Buat file teks baru di dalam folder [`TXT\`](TXT/) dengan format:
-   - `Judul Lagu - Artis.txt` (Contoh: `Ku Hidup Bagi-Mu - JPCC Worship.txt`)
-   - Atau `Judul Lagu.txt` jika artis/pencipta tidak diketahui.
-2. Isi file mengikuti struktur baku:
+Cukup buat file teks baru di dalam folder [`database/`](database/):
+1. Format nama file: `Judul Lagu - Artis.txt` (atau `Judul Lagu.txt` jika artis tidak diketahui).
+2. Format isi file:
    ```text
    BLANK
    Judul Lagu - Artis
@@ -74,35 +101,7 @@ Anda bisa menambahkan lagu karya gereja lokal atau aransemen baru dengan mudah:
    Baris reff pertama
    Baris reff kedua
    ```
-3. Simpan file, lalu jalankan `.\Generate.ps1`. Lagu langsung otomatis muncul di ProPresenter dalam hitungan detik.
-
----
-
-## 📂 Struktur Repositori
-
-```
-banklycs/
-├── TXT/                 # Master file lirik (.txt murni, flat, 20.300+ file)
-├── PRO/                 # Output binary ProPresenter 7 (.pro)
-├── Engine/              # ProEngine (.NET 8 C# compiler, source code, & cache)
-├── Tools/               # Utility Python (Scraper, Validator, Enforcer rules)
-├── gui/                 # Studio Console Web UI (Server & Frontend)
-├── Start-GUI.bat        # Launcher aplikasi GUI 1-klik
-├── Generate.ps1         # Script runner utama satu klik
-├── Generate.md          # Doktrin lengkap & Golden Rules teknis format lirik
-├── HANDOFF.md           # Log catatan pengembangan & checklist rilis
-└── README.md            # Dokumentasi panduan umum
-```
-
----
-
-## 🤝 Kontribusi & Standar Kualitas (Golden Rules)
-
-Kami sangat menyambut kontribusi penambahan lagu baru dari komunitas gereja! Harap perhatikan beberapa aturan utama:
-1. **Dilarang Halusinasi AI**: Semua lirik harus bersumber dari sumber resmi atau rekaman ibadah yang valid.
-2. **Title Case**: Judul lagu wajib Title Case (bukan ALL-CAPS).
-3. **Maksimal 2 Baris per Slide**: Pisahkan bait yang panjang dengan baris kosong agar nyaman ditayangkan di proyektor panggung.
-4. **Sentence Case pada Lirik**: Huruf kapital hanya di awal baris atau kata ganti ilahi (`-Nya`, `Tuhan`, `Kau`, `Allah`).
+3. Begitu file disimpan, lagu langsung otomatis terindeks di pencarian GUI Banklycs.
 
 ---
 

@@ -18,7 +18,7 @@ import os, re, sys, hashlib, collections, json
 
 sys.stdout.reconfigure(encoding='utf-8')
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT  = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "TXT"))
+ROOT  = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "database"))
 APPLY = "--apply" in sys.argv
 
 ILLEGAL = re.compile(r'[<>:"/\\|?*]')
