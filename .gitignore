@@ -11,6 +11,7 @@ Desktop.ini
 # .NET / C# Build Artifacts
 [Bb]in/
 [Oo]bj/
+[Pp]ublish/
 *.user
 *.suo
 .vs/

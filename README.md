@@ -35,16 +35,15 @@
 ## 🚀 Panduan Memulai Cepat (Quick Start)
 
 ### Syarat Sistem
-- **Windows 10 / 11**
+- **Windows 10 / 11 (64-bit)**
 - **ProPresenter 7**
-- **Python 3.10+**
+- **NOL INSTALASI / DEPENDENSI TAMBAHAN**: **Tidak memerlukan Python sama sekali.** (Karena ProPresenter 7 adalah aplikasi .NET WPF, seluruh komputer yang menjalankan ProPresenter 7 sudah memiliki runtime .NET bawaan Windows).
 
 ### Cara Menjalankan Aplikasi
-Cukup **double-click** file:
-```
-START.vbs   (Rekomendasi untuk Operator — 100% senyap tanpa jendela terminal hitam)
-```
-*(Atau gunakan `START.bat` jika ingin menjalankan melalui terminal).*
+Cukup **double-click** salah satu:
+1. **`START.vbs`** (Sangat Direkomendasikan untuk Operator — 100% senyap tanpa jendela terminal hitam).
+2. **`banklycs.exe`** (Langsung menjalankan aplikasi native engine & server).
+3. **`START.bat`** (Jika ingin melihat log konsol saat startup).
 
 1. Aplikasi **Studio Console** akan langsung terbuka di layar laptop Anda.
 2. Ketik judul lagu / artis / nomor buku (misal `KJ 392`, `BE 210`, atau `Darah-Mu Yesus`).
@@ -59,20 +58,25 @@ START.vbs   (Rekomendasi untuk Operator — 100% senyap tanpa jendela terminal h
 ```text
 banklycs/
 │
+├── 🚀 banklycs.exe          ← Binary Native C# Utama (Server, Search RAM, & Direct Injector)
+├── 🚀 START.vbs             ← Launcher 1-klik senyap untuk operator gereja (0 jendela CMD)
+├── ⚙️ START.bat             ← Launcher via Command Prompt (menampilkan log)
+│
 ├── 📂 database/             ← SATU-SATUNYA tempat lirik master (.txt ramah Notepad & Git)
 │   ├── Darah-Mu Yesus - JPCC Worship.txt
 │   ├── KJ 392 - 'Ku Berbahagia.txt
 │   └── ... (20.301 lagu master)
 │
-├── 📂 app/                  ← Antarmuka GUI Studio Console (server + web UI)
-│   ├── server.py
+├── 📂 app/                  ← Antarmuka Web GUI Studio Console (HTML, CSS, JS)
 │   ├── index.html
 │   ├── style.css
 │   └── app.js
 │
-├── 📂 engine/               ← Compiler C# .NET 8 & internal cache ProPresenter
-│   ├── ProEngine.exe
+├── 📂 engine/               ← Kode Sumber & Compiler C# .NET 8 (ProEngine)
 │   ├── Src/
+│   │   ├── StudioServer.cs  ← Native async HTTP server & in-memory direct injection
+│   │   ├── Program.cs       ← CLI routing & Protobuf serialization engine
+│   │   └── ProEngine.csproj
 │   └── PRO/                 ← Cache file presentasi binary (.pro) terisolasi
 │
 ├── 📂 tools/                ← Skrip scraper & audit (khusus developer/kontributor)
@@ -86,8 +90,6 @@ banklycs/
 │   ├── GUIDE.md             ← Panduan pengguna, kontribusi gereja, & web scraping
 │   └── AGENT.md             ← Konteks wajib untuk AI coding agent & status estafet
 │
-├── 🚀 START.vbs             ← Launcher 1-klik senyap untuk operator (tanpa jendela CMD)
-├── ⚙️ START.bat             ← Launcher via command prompt
 └── 📄 README.md             ← Panduan pemakaian ini
 ```
 

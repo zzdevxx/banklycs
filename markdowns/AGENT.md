@@ -9,14 +9,16 @@
 
 ```text
 banklycs/
+├── banklycs.exe       ← Single-file native C# .NET 8 binary (Server, RAM search, & direct injector)
 ├── database/          ← Master database lirik (.txt murni, flat, 20.301 lagu, Single Source of Truth)
-├── app/               ← Aplikasi Studio Console GUI (server.py, index.html, style.css, app.js)
-├── engine/            ← Compiler C# .NET 8 (ProEngine.exe) & isolasi cache (engine/PRO/*.pro)
+├── app/               ← Antarmuka Web GUI Studio Console (index.html, style.css, app.js)
+├── engine/            ← Compiler C# .NET 8 (Src/StudioServer.cs, Src/Program.cs) & cache (engine/PRO/*.pro)
 ├── tools/             ← Skrip scraper web & data pipeline (Python)
 ├── markdowns/         ← Dokumentasi inti: RULES.md, GENERATE.md, GUIDE.md, AGENT.md
-├── START.bat          ← Launcher 1-klik bagi operator gereja
+├── START.vbs          ← Launcher senyap 1-klik bagi operator gereja (0 CMD window)
+├── START.bat          ← Launcher via command prompt
 ├── README.md          ← Dokumentasi publik bagi pengguna
-└── .gitignore         ← Aturan ignore Git (mengabaikan cache engine/PRO/*.pro)
+└── .gitignore         ← Aturan ignore Git
 ```
 
 ---
@@ -42,7 +44,7 @@ banklycs/
 1. Master database 20.301 lagu berada di `database/`.
 2. Cache file binary ProPresenter 7 (`.pro`) berada di `engine/PRO/`.
 3. Folder library ProPresenter aktif (`Libraries/Banks`) **TIDAK BOLEH** diisi 20.000 file sekaligus (memicu crash indeks Lucene dan deadlock thread WPF ProPresenter).
-4. Injeksi playlist ibadah dilakukan on-demand melalui `app/server.py` dan `ProEngine.exe create-playlist`.
+4. Injeksi playlist ibadah dilakukan on-demand in-memory melalui `banklycs.exe` (`Program.CreatePlaylistDirect`) tanpa subprocess.
 
 ---
 
@@ -50,19 +52,23 @@ banklycs/
 
 ```powershell
 # 1. Menjalankan GUI lokal (Port 5050)
-.\START.bat
-# Atau manual: python app/server.py 5050
+.\banklycs.exe
+# Atau via launcher: .\START.vbs (senyap) atau .\START.bat
 
-# 2. Menjalankan audit menyeluruh kebersihan file & sync
+# 2. Build ulang binary native jika kode engine diubah
+dotnet publish engine/Src/ProEngine.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o .
+# Rename hasil publish ke banklycs.exe (jika perlu)
+
+# 3. Menjalankan audit menyeluruh kebersihan file & sync
 python tools/audit_cleanliness.py
 
-# 3. Menjalankan verifikasi format lirik
+# 4. Menjalankan verifikasi format lirik
 python tools/verify_songs.py
 
-# 4. Menjalankan ringkasan statistik database
+# 5. Menjalankan ringkasan statistik database
 python tools/summarize_db.py
 
-# 5. Menjalankan perapihan flat otomatis (dry run & apply)
+# 6. Menjalankan perapihan flat otomatis (dry run & apply)
 python tools/enforce_flat_rules.py
 python tools/enforce_flat_rules.py --apply
 ```

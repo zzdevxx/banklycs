@@ -1,7 +1,7 @@
 # GENERATE — KOMPILER ENGINE & INJEKTOR PROPRESENTER
 
 > **Proyek**: `banklycs` — Arsitektur Kompilasi & Injeksi Cepat ProPresenter 7  
-> **Lokasi Engine**: `engine/ProEngine.exe` (C# .NET 8, Google Protobuf)  
+> **Binary Utama**: `banklycs.exe` (Single-file Native C# .NET 8, Google Protobuf)  
 > **Script Batch**: `engine/Generate.ps1`  
 > **Cache Binary**: `engine/PRO/`  
 > **Terakhir diperbarui**: 2026-11-03
@@ -18,8 +18,8 @@
              │                                    │
              ▼                                    ▼
 ┌──────────────────────────────────────────────────────────────┐
-│            Studio Console GUI (app/server.py)                │
-│ - RAM Search Catalog (<2 milidetik)                          │
+│            banklycs.exe (Studio Console Native C#)           │
+│ - In-Memory RAM Search Catalog (Load: 113ms, Cari: <2ms)     │
 │ - Rundown Builder (Pilih 5–10 lagu ibadah)                   │
 └──────────────────────────────┬───────────────────────────────┘
                                │
@@ -27,9 +27,9 @@
                                │
                                ▼
 ┌──────────────────────────────────────────────────────────────┐
-│            Pipeline On-Demand Realtime Injection             │
-│ 1. Salin HANYA 5-10 file .pro terpilih ke Libraries/Banks/   │
-│ 2. Panggil: ProEngine.exe create-playlist temp.json          │
+│        Direct In-Memory Realtime Injection (<3 ms)           │
+│ 1. Salin HANYA file .pro lagu terpilih ke Libraries/Banks/   │
+│ 2. Direct Call: Program.CreatePlaylistDirect() (Zero Subproc)│
 │ 3. Update binary Playlists/Library ProPresenter              │
 └──────────────────────────────┬───────────────────────────────┘
                                │
@@ -68,10 +68,11 @@ Pemindaian puluhan ribu lagu di latar belakang memicu thread pekerja memperbarui
 ## 3. Solusi Banklycs: On-Demand Realtime Injection
 
 Banklycs memecahkan masalah ini dengan memisahkan penyimpanan masif dari eksekusi:
-1. **20.000 Lagu Tersimpan di Vault Lokal**: Seluruh database teks tersimpan di `database/` dan seluruh cache binary di `engine/PRO/`. ProPresenter sama sekali tidak dibebani oleh berkas-berkas ini.
-2. **Pencarian Kilat di RAM (<2 ms)**: Server Python membaca seluruh katalog ke memori saat aplikasi dijalankan, memungkinkan pencarian seketika tanpa I/O disk berat.
-3. **Penyuntikan Terarah (Hanya Lagu Aktif)**:
+1. **20.000 Lagu Tersimpan di Vault Lokal**: Seluruh database teks tersimpan di `database/` dan seluruh cache binary di `engine/PRO/`. ProPresenter sama sekali tidak dibebani oleh berkas-berkas ini saat startup.
+2. **Pencarian Kilat di RAM (<2 ms)**: Native engine `banklycs.exe` membaca seluruh katalog ke memori hanya dalam 113 milidetik saat aplikasi dijalankan, memungkinkan pencarian seketika tanpa I/O disk.
+3. **Penyuntikan Terarah In-Memory (Zero Subprocess, <3 ms)**:
    - Saat operator menyusun rundown (5–10 lagu) dan menekan tombol injeksi, hanya file `.pro` lagu tersebut yang disalin ke `Libraries/Banks/`.
+   - Engine langsung memanggil fungsi `Program.CreatePlaylistDirect` di dalam memori proses yang sama (tanpa membuat file JSON sementara atau meluncurkan subprocess baru).
    - Engine mendaftarkan daftar lagu tersebut ke dalam file Protobuf `Playlists/Library`.
    - ProPresenter membuka playlist dalam **1 detik** dengan konsumsi memori sangat hemat.
 

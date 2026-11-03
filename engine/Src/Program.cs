@@ -22,6 +22,45 @@ internal class Program
 
 	private static readonly Regex HeaderRegex = new Regex("^(BLANK|INTRO|VERSE(\\s+\\d+)?|PRE[\\s\\-]*CHORUS(\\s+\\d+)?|CHORUS(\\s+\\d+)?|BRIDGE(\\s+\\d+)?|TAG|INTERLUDE|ENDING|OUTRO)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+	public static void CreatePlaylistDirect(string playlistDocPath, string playlistName, List<string> songFileNames, string proBanksDir)
+	{
+		CreatePlaylist(playlistDocPath, playlistName, songFileNames, proBanksDir);
+	}
+
+	private static string ResolveWorkspaceRoot(string[] args)
+	{
+		if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]) && Directory.Exists(args[0]) && !args[0].StartsWith("-"))
+		{
+			return Path.GetFullPath(args[0]);
+		}
+
+		string currentDir = Directory.GetCurrentDirectory();
+		if (Directory.Exists(Path.Combine(currentDir, "database")) || Directory.Exists(Path.Combine(currentDir, "TXT")))
+		{
+			return currentDir;
+		}
+
+		string baseDir = AppContext.BaseDirectory;
+		if (Directory.Exists(Path.Combine(baseDir, "database")) || Directory.Exists(Path.Combine(baseDir, "TXT")))
+		{
+			return baseDir;
+		}
+
+		string parent = Directory.GetParent(baseDir)?.FullName;
+		if (parent != null && (Directory.Exists(Path.Combine(parent, "database")) || Directory.Exists(Path.Combine(parent, "TXT"))))
+		{
+			return parent;
+		}
+
+		string grandParent = Directory.GetParent(parent ?? "")?.FullName;
+		if (grandParent != null && (Directory.Exists(Path.Combine(grandParent, "database")) || Directory.Exists(Path.Combine(grandParent, "TXT"))))
+		{
+			return grandParent;
+		}
+
+		return Directory.GetCurrentDirectory();
+	}
+
 	private static void Main(string[] args)
 	{
 		Console.OutputEncoding = Encoding.UTF8;
@@ -33,53 +72,27 @@ internal class Program
 			return;
 		}
 
+		string path = ResolveWorkspaceRoot(args);
+
+		// Default execution (Double-Click or --server): Start Native Studio Console
+		bool isCompile = args.Any(a => a.Equals("--compile", StringComparison.OrdinalIgnoreCase) ||
+		                              a.Equals("--full", StringComparison.OrdinalIgnoreCase) ||
+		                              a.Equals("-Full", StringComparison.OrdinalIgnoreCase));
+
+		if (!isCompile)
+		{
+			int port = 5050;
+			if (args.Length >= 2 && args[0].Equals("--server", StringComparison.OrdinalIgnoreCase) && int.TryParse(args[1], out int p))
+			{
+				port = p;
+			}
+			Banklycs.StudioServer.Start(path, port);
+			return;
+		}
+
 		Console.WriteLine("==============================================================================");
 		Console.WriteLine("PROPRESENTER 7 MASTER ENGINE (THEME ZZ - MASTER BANKS UNIFIED)");
 		Console.WriteLine("==============================================================================");
-
-		// 1. Resolve Workspace Root Path
-		string path = null;
-		if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]) && Directory.Exists(args[0]))
-		{
-			path = Path.GetFullPath(args[0]);
-		}
-		else
-		{
-			string currentDir = Directory.GetCurrentDirectory();
-			if (Directory.Exists(Path.Combine(currentDir, "TXT")))
-			{
-				path = currentDir;
-			}
-			else
-			{
-				string baseDir = AppContext.BaseDirectory;
-				if (Directory.Exists(Path.Combine(baseDir, "TXT")))
-				{
-					path = baseDir;
-				}
-				else
-				{
-					string parent = Directory.GetParent(baseDir)?.FullName;
-					if (parent != null && Directory.Exists(Path.Combine(parent, "TXT")))
-					{
-						path = parent;
-					}
-					else
-					{
-						string grandParent = Directory.GetParent(parent ?? "")?.FullName;
-						if (grandParent != null && Directory.Exists(Path.Combine(grandParent, "TXT")))
-						{
-							path = grandParent;
-						}
-						else
-						{
-							path = Directory.GetCurrentDirectory();
-						}
-					}
-				}
-			}
-		}
-
 		Console.WriteLine($"[INFO] Workspace Path : {path}");
 
 		// 2. Resolve ProPresenter documents path
@@ -209,11 +222,19 @@ internal class Program
 			Console.WriteLine("\n[1/3] Skip library ProPresenter (tidak ada folder Libraries aktif), fokus ke direktori output workspace...");
 		}
 
-		string path5 = Path.Combine(path, "TXT");
-		string proBanksDir = Path.Combine(path, "PRO");
+		string path5 = Path.Combine(path, "database");
+		if (!Directory.Exists(path5)) path5 = Path.Combine(path, "TXT");
+
+		string proBanksDir = Path.Combine(path, "engine", "PRO");
+		if (!Directory.Exists(proBanksDir)) proBanksDir = Path.Combine(path, "PRO");
 		Directory.CreateDirectory(proBanksDir);
+
 		// Deteksi mode penuh lebih awal: penghapusan massal HANYA terjadi pada rebuild --full.
-		string manifestPathEarly = Path.Combine(path, "Engine", "compile_manifest.json");
+		string manifestPathEarly = Path.Combine(path, "engine", "compile_manifest.json");
+		if (!File.Exists(manifestPathEarly) && File.Exists(Path.Combine(path, "Engine", "compile_manifest.json")))
+		{
+			manifestPathEarly = Path.Combine(path, "Engine", "compile_manifest.json");
+		}
 		bool fullRebuildEarly = args.Any((string a) => a.Equals("--full", StringComparison.OrdinalIgnoreCase));
 		bool freshManifestEarly = !File.Exists(manifestPathEarly);
 		if (fullRebuildEarly || freshManifestEarly)
@@ -225,7 +246,7 @@ internal class Program
 		}
 
 		string[] bankFiles = Directory.GetFiles(path5, "*.txt", SearchOption.AllDirectories);
-		string manifestPath = Path.Combine(path, "Engine", "compile_manifest.json");
+		string manifestPath = manifestPathEarly;
 		bool fullRebuild = args.Any((string a) => a.Equals("--full", StringComparison.OrdinalIgnoreCase));
 		Dictionary<string, string> oldManifest = LoadManifest(manifestPath);
 		Dictionary<string, string> newManifest = new Dictionary<string, string>();
