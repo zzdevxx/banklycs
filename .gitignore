@@ -1,0 +1,38 @@
+# ==============================================================================
+# ProPresenter Lyric Banks - .gitignore
+# ==============================================================================
+
+# OS & Environment
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.tmp
+
+# .NET / C# Build Artifacts
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+.idea/
+*.vscode/
+
+# Python Cache & Scraper Temps
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.log
+
+# Engine Output & Logs
+Engine/last_errors.txt
+
+# Generated Presentations (Binary Protobuf)
+# Folder PRO dapat di-generate ulang kapan saja via .\Generate.ps1
+PRO/*.pro
+!PRO/.gitkeep
+
+# Archives & Large Backups
+*.zip
+*.tar.gz
+*.7z
