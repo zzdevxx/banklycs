@@ -42,7 +42,7 @@
 ### Cara Menjalankan Aplikasi
 Cukup **double-click** file:
 ```
-Start.bat
+START.bat
 ```
 1. Aplikasi **Studio Console** akan langsung terbuka di layar laptop Anda.
 2. Ketik judul lagu / artis / nomor buku (misal `KJ 392`, `BE 210`, atau `Darah-Mu Yesus`).
@@ -80,13 +80,11 @@ banklycs/
 │
 ├── 📂 markdowns/            ← Dokumentasi arsitektur, doktrin lirik, & panduan kontribusi
 │   ├── RULES.md             ← Aturan wajib format lirik & penamaan
-│   ├── ARCHITECTURE.md      ← Arsitektur sistem & diagnosis crash ProPresenter
-│   ├── CONTRIBUTING.md      ← Panduan kontribusi untuk gereja & relawan
-│   ├── SCRAPING_GUIDE.md    ← Panduan etika & pengembangan scraper
-│   ├── AGENT_CONTEXT.md     ← Konteks wajib untuk AI coding agent
-│   └── HANDOFF.md           ← Status serah terima & roadmap proyek
+│   ├── GENERATE.md          ← Arsitektur engine kompilasi & injeksi ProPresenter
+│   ├── GUIDE.md             ← Panduan pengguna, kontribusi gereja, & web scraping
+│   └── AGENT.md             ← Konteks wajib untuk AI coding agent & status estafet
 │
-├── 🚀 Start.bat             ← SATU-SATUNYA file yang perlu diklik oleh user awam!
+├── 🚀 START.bat             ← SATU-SATUNYA file yang perlu diklik oleh user awam!
 └── 📄 README.md             ← Panduan pemakaian ini
 ```
 
@@ -111,7 +109,7 @@ Cukup buat file teks baru di dalam folder [`database/`](database/):
    ```
 3. Begitu file disimpan, lagu langsung otomatis terindeks di pencarian GUI Banklycs.
 
-Untuk panduan format lengkap, silakan baca [markdowns/RULES.md](markdowns/RULES.md) dan [markdowns/CONTRIBUTING.md](markdowns/CONTRIBUTING.md).
+Untuk panduan format lengkap, silakan baca [markdowns/RULES.md](markdowns/RULES.md) dan [markdowns/GUIDE.md](markdowns/GUIDE.md).
 
 ---
 
@@ -119,11 +117,9 @@ Untuk panduan format lengkap, silakan baca [markdowns/RULES.md](markdowns/RULES.
 
 Dokumentasi lengkap tersimpan rapi di dalam folder [`markdowns/`](markdowns/):
 - 📖 [RULES.md](markdowns/RULES.md) — Doktrin & standarisasi format lirik panggung.
-- 🏗️ [ARCHITECTURE.md](markdowns/ARCHITECTURE.md) — Analisis teknis crash ProPresenter 7 & arsitektur Injektor Realtime.
-- 🤝 [CONTRIBUTING.md](markdowns/CONTRIBUTING.md) — Panduan kontribusi lagu bagi tim multimedia gereja.
-- 🕷️ [SCRAPING_GUIDE.md](markdowns/SCRAPING_GUIDE.md) — Panduan etika web scraping & pipeline data.
-- 🤖 [AGENT_CONTEXT.md](markdowns/AGENT_CONTEXT.md) — Konteks sistem & operational manual untuk AI agent.
-- 📋 [HANDOFF.md](markdowns/HANDOFF.md) — Catatan serah terima status teknis & roadmap.
+- ⚡ [GENERATE.md](markdowns/GENERATE.md) — Arsitektur teknis kompilasi C# & injektor realtime ProPresenter.
+- 🤝 [GUIDE.md](markdowns/GUIDE.md) — Panduan pemakaian, kontribusi gereja, & web scraping.
+- 🤖 [AGENT.md](markdowns/AGENT.md) — Manual operasional AI agent, checklist pengerjaan, & status estafet.
 
 ---
 

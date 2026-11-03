@@ -1,41 +1,23 @@
-# BANKLYCS — DOKTRIN & ATURAN LIRIK MASTER (RULES)
+# RULES — DOKTRIN & STANDAR LIRIK MASTER
 
 > **Proyek**: `banklycs` — Bank Lirik & Injektor Cepat ProPresenter 7  
 > **Master Database**: `database/` — **20.301 lagu, SATU folder datar murni, TANPA subfolder**  
 > **Engine & Cache**: `engine/PRO/` (file binary Protobuf ProPresenter 7)  
-> **Studio Console GUI**: `app/` (Server lokal Python + UI antarmuka web, `Start.bat`)  
-> **Dokumentasi & Konteks**: Folder `markdowns/`  
+> **Studio Console GUI**: `app/` (Server lokal Python + UI antarmuka web, `START.bat`)  
 > **Terakhir diperbarui**: 2026-11-03
 
 ---
 
-## 1. Visi & Filosofi Sistem
+## 1. Filosofi & Visi Sistem
 
-1. **Operator Sentris**: Operator proyektor gereja **tidak boleh lagi** mencari & *copy-paste* lirik terburu-buru dari Google/browser saat kebaktian berlangsung. Cukup buka `Start.bat`, ketik judul/nomor buku, lagu ketemu dalam <2 milidetik, lalu klik `INJECT KE PROPRESENTER`.
+1. **Operator Sentris**: Operator proyektor gereja **tidak boleh lagi** mencari & *copy-paste* lirik terburu-buru dari Google/browser saat kebaktian berlangsung. Cukup buka `START.bat`, ketik judul/nomor buku, lagu ketemu dalam <2 milidetik, lalu klik `INJECT KE PROPRESENTER`.
 2. **ProPresenter Selalu Ringan (<1 detik startup)**: Memasukkan 20.000 file sekaligus ke dalam ProPresenter terbukti menyebabkan *deadlock* thread UI dan tabrakan indeks Lucene. Banklycs menyimpan 20.000 lagu di vault lokal, dan **hanya menyuntikkan (inject) 5–10 lagu rundown aktif** ke ProPresenter.
-3. **Penyimpanan Sederhana (Single Source of Truth)**: Folder `database/` berisi file `.txt` murni berformat standar yang dapat dibaca manusia (Human-Readable), ramah Notepad, dan mudah dilacak perubahannya di Git. File `.pro` di `engine/PRO/` hanyalah artefak kompilasi mesin.
+3. **Penyimpanan Sederhana (Single Source of Truth)**: Folder `database/` berisi file `.txt` murni berformat standar yang dapat dibaca manusia (*human-readable*), ramah Notepad, dan mudah dilacak perubahannya di Git. File `.pro` di `engine/PRO/` hanyalah artefak kompilasi mesin.
 
 ---
 
-## 2. Struktur Repositori Bersih
+## 2. Aturan Format & Penamaan File
 
-```text
-banklycs/
-├── database/        ← Master lirik teks murni (.txt, 20.301 lagu flat, SATU-SATUNYA acuan)
-├── app/             ← Aplikasi Studio Console GUI (server.py, index.html, style.css, app.js)
-├── engine/          ← Compiler C# .NET 8 (ProEngine.exe) & isolasi cache .pro (engine/PRO/)
-├── tools/           ← Skrip scraper web & data pipeline (Python)
-├── markdowns/       ← Panduan doktrin, arsitektur, aturan lirik, & konteks agent
-├── Start.bat        ← Launcher satu klik untuk operator gereja
-├── README.md        ← Panduan umum pengguna
-└── .gitignore       ← Mengabaikan cache build & file sementara
-```
-
----
-
-## 3. Aturan Wajib Penulisan Lirik (Golden Rules)
-
-### A. Format & Standar Penamaan File
 1. **Format Standar**: `Judul Lagu - Artis.txt` atau `Judul Lagu.txt`.
 2. **Tanpa Artis Jika Tidak Diketahui**: Jika artis/pencipta lagu tidak tercantum pada sumber resmi, gunakan nama file berupa judul lagu saja (contoh: `Adalah Baik Untuk.txt`). **DILARANG** menambahkan label rekaan seperti `- No Name`, `- Unknown`, atau `- Praise & Worship`.
 3. **Satu Artis Utama**: Jika lagu dinyanyikan secara kolaborasi/fitur (*featuring*), ambil hanya artis utama (contoh: `Build My Life - Pat Barrett.txt`).
@@ -56,8 +38,9 @@ banklycs/
 
 ---
 
-### B. Struktur Isi File Lirik
-Setiap file `.txt` wajib mengikuti format baku berikut:
+## 3. Struktur Isi File Lirik
+
+Setiap file `.txt` wajib mengikuti susunan baku berikut:
 
 ```text
 BLANK
@@ -84,36 +67,16 @@ Baris reff kedua
    - Istilah bahasa Indonesia dinormalkan: `BAIT` → `VERSE`, `REFF` → `CHORUS`.
 4. **Sentence Case pada Teks Lirik**:
    - Teks lirik **tidak boleh ditulis huruf kapital semua** (*ALL CAPS*).
-   - Huruf kapital hanya digunakan pada awal baris, nama diri, dan kata ganti ilahi (`Mu`, `Nya`, `Ku`, `Kau`, `Tuhan`, `Allah`).
+   - Huruf kapital hanya digunakan pada awal baris, nama orang, dan kata ganti ilahi (`Mu`, `Nya`, `Ku`, `Kau`, `Tuhan`, `Allah`).
 5. **Kebersihan Karakter**:
    - Disimpan dengan format UTF-8 murni (tanpa BOM).
-   - Menggunakan tanda petik ASCII standar (`'` dan `"`), bukan petik miring miring mojibake.
+   - Menggunakan tanda petik ASCII standar (`'` dan `"`), bukan petik miring mojibake.
    - Tidak boleh mengandung tautan web (URL), chord musik, atau placeholder generator (`LYRIC_LINE_1`).
 
 ---
 
-### C. Doktrin Nol-Halusinasi (Strict Zero-Hallucination)
-- **DILARANG KERAS** menggunakan AI/LLM untuk mengarang atau melengkapi bait lirik lagu.
+## 4. Doktrin Nol-Halusinasi (Strict Zero-Hallucination)
+
+- **DILARANG KERAS** menggunakan AI/LLM untuk mengarang atau melengkapi teks lirik lagu.
 - Semua lirik wajib bersumber dari data autentik: hasil scraping situs lirik tepercaya, buku himne gereja berlisensi, atau rekaman audio resmi.
 - Jika ada bait yang tidak lengkap dari sumber web, cari sumber pembanding resmi atau tinggalkan apa adanya sesuai dokumen aslinya.
-
----
-
-## 4. Alur Kerja Harian & Pemeliharaan
-
-```powershell
-# 1. Menjalankan Aplikasi Studio Console (Port 5050)
-.\Start.bat
-
-# 2. Menjalankan Audit Kualitas & Sinkronisasi
-python tools/audit_cleanliness.py
-
-# 3. Menjalankan Verifikasi Validitas Format
-python tools/verify_songs.py
-
-# 4. Melihat Statistik Komposisi Database
-python tools/summarize_db.py
-
-# 5. Menjalankan Engine Compiler (Hanya jika perlu rebuild .pro cache)
-powershell -ExecutionPolicy Bypass -File .\engine\Generate.ps1
-```
