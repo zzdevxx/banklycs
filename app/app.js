@@ -164,6 +164,24 @@
       const data = await res.json();
       state.allCount = data.total_songs || 0;
 
+      if (data.catalog_stale) {
+        // Catalog in RAM predates the DB on disk (imports / edits happened after start).
+        // Old engine builds have no catalog_stale field -> guarded.
+        statusIndicator.className = 'pro-dot offline';
+        statusText.textContent = 'Library Updated - Reloading...';
+        try {
+          const r = await fetch('/api/reload');
+          const d = await r.json();
+          state.allCount = d.total_songs || state.allCount;
+          loadSongs();
+          statusText.textContent = `ProPresenter 7 Ready (${state.allCount.toLocaleString()} songs)`;
+          statusIndicator.className = 'pro-dot';
+        } catch {
+          statusText.textContent = 'Library Updated - Press Reload';
+        }
+        return;
+      }
+
       if (data.propresenter_dir) {
         statusIndicator.className = 'pro-dot';
         statusText.textContent = 'ProPresenter 7 Ready';
