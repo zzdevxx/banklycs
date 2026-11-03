@@ -34,8 +34,8 @@ database/pro/*.pro
 !database/pro/.gitkeep
 engine/PRO/*.pro
 !engine/PRO/.gitkeep
-PRO
-TXT
+/PRO
+/TXT
 
 # Archives & Large Backups
 *.zip
