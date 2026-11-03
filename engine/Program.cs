@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
 using Google.Protobuf;
+using Microsoft.Data.Sqlite;
 using Pro.SerializationInterop.RVProtoData;
 
 internal class Program
@@ -73,6 +74,14 @@ internal class Program
 		}
 
 		string path = ResolveWorkspaceRoot(args);
+
+		// Sub-command: export-txt [target_dir]
+		if (args.Length >= 1 && args[0].Equals("export-txt", StringComparison.OrdinalIgnoreCase))
+		{
+			string target = args.Length >= 2 ? args[1] : Path.Combine(path, "database", "txt");
+			ExportTxt(path, target);
+			return;
+		}
 
 		// Default execution (Double-Click or --server): Start Native Studio Console
 		bool isCompile = args.Any(a => a.Equals("--compile", StringComparison.OrdinalIgnoreCase) ||
@@ -820,9 +829,9 @@ internal class Program
 		return Convert.ToHexString(sha.ComputeHash(fs));
 	}
 
-	private static List<ParsedGroup> ParseLyricFile(string path)
+	public static List<ParsedGroup> ParseLyricContent(string content)
 	{
-		string[] array = File.ReadAllLines(path, Encoding.UTF8);
+		string[] array = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 		List<ParsedGroup> list = new List<ParsedGroup>();
 		ParsedGroup parsedGroup = null;
 		List<string> list2 = new List<string>();
@@ -922,6 +931,145 @@ internal class Program
 			parsedGroup?.Slides.Add(new List<string>(list2));
 		}
 		return list;
+	}
+
+	private static List<ParsedGroup> ParseLyricFile(string path)
+	{
+		return ParseLyricContent(File.ReadAllText(path, Encoding.UTF8));
+	}
+
+	private static Template.Types.Slide? s_baseSlideTemplate = null;
+	private static ApplicationInfo? s_appInfo = null;
+	private static readonly object s_themeLock = new object();
+
+	public static bool EnsureThemeLoaded(string? rootPath = null, string? proPresenterDir = null)
+	{
+		if (s_baseSlideTemplate != null) return true;
+		lock (s_themeLock)
+		{
+			if (s_baseSlideTemplate != null) return true;
+
+			string? themePath = null;
+			if (!string.IsNullOrEmpty(proPresenterDir) && Directory.Exists(proPresenterDir))
+			{
+				string t = Path.Combine(proPresenterDir, "Themes", "zz", "Theme");
+				if (File.Exists(t)) themePath = t;
+				else
+				{
+					t = Path.Combine(proPresenterDir, "Themes", "xx", "Theme");
+					if (File.Exists(t)) themePath = t;
+				}
+			}
+
+			if (themePath == null && !string.IsNullOrEmpty(rootPath))
+			{
+				string localTheme = Path.Combine(rootPath, "engine", "ThemeTemplate");
+				if (File.Exists(localTheme)) themePath = localTheme;
+				else
+				{
+					localTheme = Path.Combine(rootPath, "Engine", "ThemeTemplate");
+					if (File.Exists(localTheme)) themePath = localTheme;
+				}
+			}
+
+			if (themePath == null)
+			{
+				string baseDirTheme = Path.Combine(AppContext.BaseDirectory, "ThemeTemplate");
+				if (File.Exists(baseDirTheme)) themePath = baseDirTheme;
+				else
+				{
+					baseDirTheme = Path.Combine(AppContext.BaseDirectory, "engine", "ThemeTemplate");
+					if (File.Exists(baseDirTheme)) themePath = baseDirTheme;
+				}
+			}
+
+			if (themePath == null || !File.Exists(themePath))
+			{
+				Console.WriteLine("[WARN] File Tema tidak ditemukan di ProPresenter maupun engine/ThemeTemplate fallback!");
+				return false;
+			}
+
+			try
+			{
+				byte[] data = File.ReadAllBytes(themePath);
+				Template.Types.Document themeDoc = Template.Types.Document.Parser.ParseFrom(data);
+				Template.Types.Slide? slide = themeDoc.Slides.FirstOrDefault(s => s.Name == "Lyric - Praise") ?? themeDoc.Slides.FirstOrDefault();
+				if (slide == null)
+				{
+					Console.WriteLine("[WARN] Slide template kosong di Theme!");
+					return false;
+				}
+				s_baseSlideTemplate = slide;
+				s_appInfo = themeDoc.ApplicationInfo;
+				return true;
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"[ERROR] Gagal memuat tema: {ex.Message}");
+				return false;
+			}
+		}
+	}
+
+	public static bool CompileAndSaveSong(string songName, string lyricContent, string targetFile, string? rootPath = null, string? proPresenterDir = null)
+	{
+		if (!EnsureThemeLoaded(rootPath, proPresenterDir) || s_baseSlideTemplate == null)
+		{
+			return false;
+		}
+
+		List<ParsedGroup> parsedGroups = ParseLyricContent(lyricContent);
+		string dir = Path.GetDirectoryName(targetFile) ?? "";
+		if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+		{
+			Directory.CreateDirectory(dir);
+		}
+
+		return BuildPresentation(s_baseSlideTemplate, songName, parsedGroups, "Praise", targetFile, s_appInfo);
+	}
+
+	public static void ExportTxt(string rootPath, string targetDir)
+	{
+		string dbPath = Path.Combine(rootPath, "database", "banklycs.db");
+		if (!File.Exists(dbPath))
+		{
+			Console.WriteLine($"[ERROR] Database tidak ditemukan di: {dbPath}");
+			return;
+		}
+
+		if (!Directory.Exists(targetDir))
+		{
+			Directory.CreateDirectory(targetDir);
+		}
+
+		Console.WriteLine($"[EXPORT] Mengekspor lirik dari {dbPath} ke {targetDir}...");
+		Stopwatch sw = Stopwatch.StartNew();
+
+		string connStr = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+		{
+			DataSource = dbPath,
+			Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly
+		}.ToString();
+
+		int count = 0;
+		using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(connStr))
+		{
+			conn.Open();
+			using var cmd = conn.CreateCommand();
+			cmd.CommandText = "SELECT filename, content FROM songs;";
+			using var reader = cmd.ExecuteReader();
+			while (reader.Read())
+			{
+				string filename = reader.GetString(0);
+				string content = reader.GetString(1);
+				string outPath = Path.Combine(targetDir, filename);
+				File.WriteAllText(outPath, content, Encoding.UTF8);
+				count++;
+			}
+		}
+
+		sw.Stop();
+		Console.WriteLine($"[OK] Sukses mengekspor {count:N0} lagu ke '{targetDir}' dalam {sw.ElapsedMilliseconds} ms ({sw.Elapsed.TotalSeconds:F2} detik)!");
 	}
 
 	private static bool BuildPresentation(Template.Types.Slide baseSlideTemplate, string songName, List<ParsedGroup> parsedGroups, string genre, string targetFile, ApplicationInfo appInfo)

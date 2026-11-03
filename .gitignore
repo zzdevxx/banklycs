@@ -12,11 +12,27 @@ Desktop.ini
 [Bb]in/
 [Oo]bj/
 [Pp]ublish/
+publish/
 *.user
 *.suo
+*.pdb
 .vs/
 .idea/
 *.vscode/
+
+# SQLite Temporary Cache & WAL
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Database Single-File Tracking
+!database/banklycs.db
+
+# Loose File Dumps (if user runs export-txt)
+database/txt/
+database/pro/
+/PRO
+/TXT
 
 # Python Cache & Scraper Temps
 __pycache__/
@@ -27,15 +43,7 @@ __pycache__/
 
 # Engine Output & Logs
 engine/last_errors.txt
-
-# Generated Presentations (Binary Protobuf)
-# File .pro dapat di-generate ulang kapan saja via engine
-database/pro/*.pro
-!database/pro/.gitkeep
-engine/PRO/*.pro
-!engine/PRO/.gitkeep
-/PRO
-/TXT
+engine/test_export/
 
 # Archives & Large Backups
 *.zip

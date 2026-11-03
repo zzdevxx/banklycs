@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Data.Sqlite;
 
 namespace Banklycs
 {
@@ -47,6 +48,7 @@ namespace Banklycs
     {
         private static List<SongCatalogItem> Catalog = new List<SongCatalogItem>();
         private static string ProjectRoot = "";
+        private static string DatabasePath = "";
         private static string DatabaseDir = "";
         private static string ProDir = "";
         private static string AppDir = "";
@@ -103,45 +105,85 @@ namespace Banklycs
 
         private static void LoadCatalog()
         {
-            Console.WriteLine($"[CATALOG] Memindai folder database: {DatabaseDir}...");
-            if (!Directory.Exists(DatabaseDir))
-            {
-                Console.WriteLine($"[ERROR] Folder database tidak ditemukan di: {DatabaseDir}");
-                return;
-            }
-
             Stopwatch sw = Stopwatch.StartNew();
             List<SongCatalogItem> items = new List<SongCatalogItem>(25000);
 
-            foreach (string filePath in Directory.EnumerateFiles(DatabaseDir, "*.txt", SearchOption.TopDirectoryOnly))
+            if (File.Exists(DatabasePath))
             {
-                string filename = Path.GetFileName(filePath);
-                string baseName = Path.GetFileNameWithoutExtension(filePath);
-                string title = baseName;
-                string artist = "";
-
-                int dashIdx = baseName.IndexOf(" - ", StringComparison.Ordinal);
-                if (dashIdx > 0)
+                Console.WriteLine($"[CATALOG] Memuat seluruh katalog dari SQLite Database: {DatabasePath}...");
+                try
                 {
-                    title = baseName.Substring(0, dashIdx).Trim();
-                    artist = baseName.Substring(dashIdx + 3).Trim();
+                    string connStr = new SqliteConnectionStringBuilder
+                    {
+                        DataSource = DatabasePath,
+                        Mode = SqliteOpenMode.ReadOnly
+                    }.ToString();
+
+                    using var conn = new SqliteConnection(connStr);
+                    conn.Open();
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = "SELECT id, filename, title, artist, category FROM songs ORDER BY title COLLATE NOCASE;";
+                    using var reader = cmd.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        string filename = reader.GetString(1);
+                        string title = reader.GetString(2);
+                        string artist = reader.IsDBNull(3) ? "" : reader.GetString(3);
+                        string cat = reader.IsDBNull(4) ? "ID" : reader.GetString(4);
+                        string baseName = Path.GetFileNameWithoutExtension(filename);
+                        string searchIdx = $"{title} {artist} {baseName}".ToLowerInvariant();
+
+                        items.Add(new SongCatalogItem
+                        {
+                            filename = filename,
+                            pro = baseName + ".pro",
+                            title = title,
+                            artist = artist,
+                            category = string.IsNullOrEmpty(cat) ? DetermineCategory(baseName) : cat,
+                            search_index = searchIdx
+                        });
+                    }
                 }
-
-                string cat = DetermineCategory(baseName);
-                string searchIdx = $"{title} {artist} {baseName}".ToLowerInvariant();
-
-                items.Add(new SongCatalogItem
+                catch (Exception ex)
                 {
-                    filename = filename,
-                    pro = baseName + ".pro",
-                    title = title,
-                    artist = artist,
-                    category = cat,
-                    search_index = searchIdx
-                });
+                    Console.WriteLine($"[WARN] Gagal membaca SQLite database: {ex.Message}");
+                }
             }
 
-            items.Sort((a, b) => string.Compare(a.title, b.title, StringComparison.OrdinalIgnoreCase));
+            // Fallback: scan disk folder if SQLite is missing or empty
+            if (items.Count == 0 && Directory.Exists(DatabaseDir))
+            {
+                Console.WriteLine($"[CATALOG] Fallback memindai folder database: {DatabaseDir}...");
+                foreach (string filePath in Directory.EnumerateFiles(DatabaseDir, "*.txt", SearchOption.TopDirectoryOnly))
+                {
+                    string filename = Path.GetFileName(filePath);
+                    string baseName = Path.GetFileNameWithoutExtension(filePath);
+                    string title = baseName;
+                    string artist = "";
+
+                    int dashIdx = baseName.IndexOf(" - ", StringComparison.Ordinal);
+                    if (dashIdx > 0)
+                    {
+                        title = baseName.Substring(0, dashIdx).Trim();
+                        artist = baseName.Substring(dashIdx + 3).Trim();
+                    }
+
+                    string cat = DetermineCategory(baseName);
+                    string searchIdx = $"{title} {artist} {baseName}".ToLowerInvariant();
+
+                    items.Add(new SongCatalogItem
+                    {
+                        filename = filename,
+                        pro = baseName + ".pro",
+                        title = title,
+                        artist = artist,
+                        category = cat,
+                        search_index = searchIdx
+                    });
+                }
+                items.Sort((a, b) => string.Compare(a.title, b.title, StringComparison.OrdinalIgnoreCase));
+            }
+
             Catalog = items;
             sw.Stop();
             Console.WriteLine($"[CATALOG] Sukses memuat {Catalog.Count:N0} lagu ke RAM dalam {sw.ElapsedMilliseconds} ms!");
@@ -150,6 +192,7 @@ namespace Banklycs
         public static void Start(string rootPath, int preferredPort = 5050)
         {
             ProjectRoot = rootPath;
+            DatabasePath = Path.Combine(ProjectRoot, "database", "banklycs.db");
             DatabaseDir = Path.Combine(ProjectRoot, "database", "txt");
             if (!Directory.Exists(DatabaseDir))
             {
@@ -195,7 +238,7 @@ namespace Banklycs
             Console.WriteLine("  BANKLYCS NATIVE STUDIO CONSOLE (C# .NET 8 / ZERO-DEPENDENCY)");
             Console.WriteLine($"  URL              : {serverUrl}");
             Console.WriteLine($"  ProPresenter Dir : {(string.IsNullOrEmpty(ProPresenterDir) ? "[TIDAK TERDETEKSI]" : ProPresenterDir)}");
-            Console.WriteLine($"  Database Vault   : {DatabaseDir} ({Catalog.Count:N0} lagu)");
+            Console.WriteLine($"  Database Vault   : {(File.Exists(DatabasePath) ? DatabasePath : DatabaseDir)} ({Catalog.Count:N0} lagu)");
             Console.WriteLine("==============================================================================");
             Console.WriteLine("[INFO] Tekan Ctrl+C untuk menutup server.");
 
@@ -331,15 +374,64 @@ namespace Banklycs
                     if (rawPath.Equals("/api/lyrics", StringComparison.OrdinalIgnoreCase))
                     {
                         string filename = (req.QueryString["file"] ?? "").Trim();
-                        string filePath = Path.Combine(DatabaseDir, filename);
-
-                        if (string.IsNullOrEmpty(filename) || !File.Exists(filePath))
+                        if (string.IsNullOrEmpty(filename))
                         {
-                            SendJson(req, res, new { error = "File tidak ditemukan" }, 404);
+                            SendJson(req, res, new { error = "Parameter file kosong" }, 400);
                             return;
                         }
 
-                        string content = File.ReadAllText(filePath, Encoding.UTF8);
+                        string content = "";
+                        string titleOnly = Path.GetFileNameWithoutExtension(filename);
+
+                        if (File.Exists(DatabasePath))
+                        {
+                            try
+                            {
+                                string connStr = new SqliteConnectionStringBuilder
+                                {
+                                    DataSource = DatabasePath,
+                                    Mode = SqliteOpenMode.ReadOnly
+                                }.ToString();
+
+                                using var conn = new SqliteConnection(connStr);
+                                conn.Open();
+                                using var cmd = conn.CreateCommand();
+                                cmd.CommandText = "SELECT filename, title, content FROM songs WHERE filename = @f OR title = @f OR filename = @f_txt LIMIT 1;";
+                                cmd.Parameters.AddWithValue("@f", filename);
+                                cmd.Parameters.AddWithValue("@f_txt", filename.EndsWith(".txt", StringComparison.OrdinalIgnoreCase) ? filename : filename + ".txt");
+                                using var reader = cmd.ExecuteReader();
+                                if (reader.Read())
+                                {
+                                    filename = reader.GetString(0);
+                                    titleOnly = reader.GetString(1);
+                                    content = reader.GetString(2);
+                                }
+                            }
+                            catch (Exception dbEx)
+                            {
+                                Console.WriteLine($"[WARN] Gagal membaca lirik dari SQLite: {dbEx.Message}");
+                            }
+                        }
+
+                        if (string.IsNullOrEmpty(content))
+                        {
+                            string filePath = Path.Combine(DatabaseDir, filename);
+                            if (!File.Exists(filePath) && !filename.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+                            {
+                                filePath = Path.Combine(DatabaseDir, filename + ".txt");
+                            }
+                            if (File.Exists(filePath))
+                            {
+                                content = File.ReadAllText(filePath, Encoding.UTF8);
+                            }
+                        }
+
+                        if (string.IsNullOrEmpty(content))
+                        {
+                            SendJson(req, res, new { error = "File lagu tidak ditemukan" }, 404);
+                            return;
+                        }
+
                         string[] lines = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
                         List<LyricsGroup> groups = new List<LyricsGroup>();
@@ -387,7 +479,6 @@ namespace Banklycs
                             groups.Add(curGroup);
                         }
 
-                        string titleOnly = Path.GetFileNameWithoutExtension(filename);
                         var lyricsData = new LyricsResponse
                         {
                             filename = filename,
@@ -437,48 +528,119 @@ namespace Banklycs
                         string libBanks = Path.Combine(ProPresenterDir, "Libraries", "Banks");
                         Directory.CreateDirectory(libBanks);
 
-                        int copiedCount = 0;
+                        int compiledCount = 0;
                         List<string> missingFiles = new List<string>();
 
-                        foreach (string s in data.songs)
+                        SqliteConnection? dbConn = null;
+                        if (File.Exists(DatabasePath))
                         {
-                            string proName = s.EndsWith(".pro", StringComparison.OrdinalIgnoreCase) ? s : s + ".pro";
-                            string srcFile = Path.Combine(ProDir, proName);
-                            string dstFile = Path.Combine(libBanks, proName);
+                            try
+                            {
+                                string connStr = new SqliteConnectionStringBuilder
+                                {
+                                    DataSource = DatabasePath,
+                                    Mode = SqliteOpenMode.ReadOnly
+                                }.ToString();
+                                dbConn = new SqliteConnection(connStr);
+                                dbConn.Open();
+                            }
+                            catch (Exception dbEx)
+                            {
+                                Console.WriteLine($"[WARN] Gagal membuka banklycs.db untuk inject on-demand: {dbEx.Message}");
+                            }
+                        }
 
-                            if (File.Exists(srcFile))
+                        try
+                        {
+                            foreach (string s in data.songs)
                             {
-                                try
+                                string cleanName = s.Trim();
+                                if (cleanName.EndsWith(".pro", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    if (!File.Exists(dstFile) || new FileInfo(dstFile).Length != new FileInfo(srcFile).Length)
+                                    cleanName = cleanName.Substring(0, cleanName.Length - 4);
+                                }
+                                else if (cleanName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    cleanName = cleanName.Substring(0, cleanName.Length - 4);
+                                }
+
+                                string proFileName = cleanName + ".pro";
+                                string dstFile = Path.Combine(libBanks, proFileName);
+
+                                bool compiled = false;
+                                string songTitle = cleanName;
+                                string songContent = "";
+
+                                if (dbConn != null)
+                                {
+                                    using var cmd = dbConn.CreateCommand();
+                                    cmd.CommandText = "SELECT title, content FROM songs WHERE filename = @f OR title = @f OR filename = @f_txt LIMIT 1;";
+                                    cmd.Parameters.AddWithValue("@f", cleanName);
+                                    cmd.Parameters.AddWithValue("@f_txt", cleanName + ".txt");
+                                    using var r = cmd.ExecuteReader();
+                                    if (r.Read())
                                     {
-                                        File.Copy(srcFile, dstFile, overwrite: true);
+                                        songTitle = r.GetString(0);
+                                        songContent = r.GetString(1);
                                     }
-                                    copiedCount++;
                                 }
-                                catch (Exception copyEx)
+
+                                if (!string.IsNullOrEmpty(songContent))
                                 {
-                                    Console.WriteLine($"[WARN] Gagal menyalin {srcFile}: {copyEx.Message}");
+                                    compiled = Program.CompileAndSaveSong(songTitle, songContent, dstFile, ProjectRoot, ProPresenterDir);
+                                }
+                                else
+                                {
+                                    // Fallback: check loose txt file
+                                    string txtFile = Path.Combine(DatabaseDir, cleanName + ".txt");
+                                    if (File.Exists(txtFile))
+                                    {
+                                        songContent = File.ReadAllText(txtFile, Encoding.UTF8);
+                                        compiled = Program.CompileAndSaveSong(songTitle, songContent, dstFile, ProjectRoot, ProPresenterDir);
+                                    }
+                                    else
+                                    {
+                                        // Fallback: check pre-existing .pro file in ProDir
+                                        string srcPro = Path.Combine(ProDir, proFileName);
+                                        if (File.Exists(srcPro))
+                                        {
+                                            File.Copy(srcPro, dstFile, overwrite: true);
+                                            compiled = true;
+                                        }
+                                    }
+                                }
+
+                                if (compiled && File.Exists(dstFile))
+                                {
+                                    compiledCount++;
+                                }
+                                else
+                                {
+                                    missingFiles.Add(proFileName);
                                 }
                             }
-                            else
-                            {
-                                missingFiles.Add(proName);
-                            }
+                        }
+                        finally
+                        {
+                            dbConn?.Dispose();
                         }
 
                         // IN-PROCESS ATOMIC CALL TO CREATE PLAYLIST (ZERO SUBPROCESS!)
                         string playlistDocPath = Path.Combine(ProPresenterDir, "Playlists", "Library");
-                        Program.CreatePlaylistDirect(playlistDocPath, data.name, data.songs, ProDir);
+                        List<string> songNamesForPlaylist = data.songs
+                            .Select(s => s.EndsWith(".pro", StringComparison.OrdinalIgnoreCase) ? s : s + ".pro")
+                            .ToList();
+
+                        Program.CreatePlaylistDirect(playlistDocPath, data.name, songNamesForPlaylist, libBanks);
 
                         var injectResult = new
                         {
                             success = true,
                             playlist = data.name,
                             songs_count = data.songs.Count,
-                            copied_to_library = copiedCount,
+                            compiled_to_library = compiledCount,
                             missing_in_pro = missingFiles,
-                            engine_output = $"[OK] Playlist '{data.name}' berhasil disuntikkan secara native ({data.songs.Count} lagu)!"
+                            engine_output = $"[OK] Playlist '{data.name}' berhasil disuntikkan secara on-demand ({data.songs.Count} lagu)!"
                         };
 
                         SendJson(req, res, injectResult);

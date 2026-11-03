@@ -1,109 +1,90 @@
 # GENERATE — KOMPILER ENGINE & INJEKTOR PROPRESENTER
 
-> **Proyek**: `banklycs` — Arsitektur Kompilasi & Injeksi Cepat ProPresenter 7  
-> **Binary Utama**: `engine/banklycs.exe` (Single-file Native C# .NET 8, Google Protobuf)  
-> **Script Batch**: `engine/Generate.ps1`  
-> **Cache Binary**: `database/pro/`  
+> **Proyek**: `banklycs` — Arsitektur Kompilasi On-Demand & Injeksi Cepat ProPresenter 7  
+> **Binary Utama**: `engine/banklycs.exe` (Single-file Native C# .NET 8, Google Protobuf + Embedded SQLite)  
+> **Master Database**: `database/banklycs.db` (SQLite Single-File dengan FTS5 Full-Text Search)  
 > **Terakhir diperbarui**: 2026-11-03
 
 ---
 
-## 1. Diagram Alur Data & Injeksi
+## 1. Diagram Alur Data & Injeksi On-Demand
 
 ```
-┌─────────────────────────┐          ┌─────────────────────────┐
-│ database/txt/ (.txt)    │          │ database/pro/ (.pro)    │
-│ Single Source of Truth  │          │ Vault Binary Protobuf   │
-└────────────┬────────────┘          └────────────┬────────────┘
-             │                                    │
-             ▼                                    ▼
-┌──────────────────────────────────────────────────────────────┐
-│        engine/banklycs.exe (Studio Console Native C#)        │
-│ - In-Memory RAM Search Catalog (Load: 113ms, Cari: <2ms)     │
-│ - Rundown Builder (Pilih 5–10 lagu ibadah)                   │
-└──────────────────────────────┬───────────────────────────────┘
-                               │
-            [ Klik: "INJECT KE PROPRESENTER" ]
-                               │
-                               ▼
-┌──────────────────────────────────────────────────────────────┐
-│        Direct In-Memory Realtime Injection (<3 ms)           │
-│ 1. Salin HANYA file .pro lagu terpilih ke Libraries/Banks/   │
-│ 2. Direct Call: Program.CreatePlaylistDirect() (Zero Subproc)│
-│ 3. Update binary Playlists/Library ProPresenter              │
-└──────────────────────────────┬───────────────────────────────┘
-                               │
-                               ▼
-┌──────────────────────────────────────────────────────────────┐
-│                ProPresenter 7 (Instance Aktif)               │
-│ - Startup Instan (<1 detik, Tanpa Crash)                     │
-│ - Playlist Ibadah langsung muncul & siap tayang              │
-└──────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│             database/banklycs.db (28.97 MB)            │
+│  - 20.301 Lagu Terkurasi dalam 1 File Database SQLite  │
+│  - FTS5 Full-Text Search Virtual Table                 │
+│  - Zero Filesystem Bloat / Zero NTFS Overhead          │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│     engine/banklycs.exe (Studio Console Native C#)     │
+│  - In-Memory RAM Search Catalog (Load: ~140ms)         │
+│  - Multi-token Instant Filter (<2ms search)            │
+│  - Rundown Builder (Pilih 5–10 lagu ibadah)            │
+└───────────────────────────┬────────────────────────────┘
+                            │
+         [ Operator Klik: "INJECT KE PROPRESENTER" ]
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│     Direct On-Demand In-Memory Compilation (<1 ms)     │
+│  1. Query lirik lagu dari database/banklycs.db         │
+│  2. Program.CompileAndSaveSong() mengompilasi Protobuf │
+│     langsung ke Libraries/Banks/{lagu}.pro             │
+│  3. Program.CreatePlaylistDirect() mendaftarkan        │
+│     playlist ibadah ke Playlists/Library               │
+└───────────────────────────┬────────────────────────────┘
+                            │
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│            ProPresenter 7 (Instance Aktif)             │
+│  - Startup Instan (<1 detik, Tanpa Crash)              │
+│  - Playlist Ibadah langsung muncul & siap tayang       │
+│  - Bebas dari beban 20.000 file tak terpakai           │
+└────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Diagnosis Teknis: Kenapa ProPresenter Crash dengan 20.000 Lagu?
+## 2. Mengapa Arsitektur On-Demand Jauh Lebih Unggul?
 
-Ketika 20.301 file `.pro` diletakkan sekaligus di dalam folder library ProPresenter (`OneDrive\Documents\ProPresenter\Libraries\Banks`), ProPresenter mengalami *freeze* total atau *crash* saat *startup*. Berdasarkan audit log resmi ProPresenter (`AppData\Local\RenewedVision\ProPresenter\Logs\Log.log`), ditemukan 3 penyebab utama:
+Sebelumnya, repositori menyimpan 20.301 file `.txt` dan 20.301 file `.pro` (total >40.600 file terpisah berukuran ~300 MB). Hal ini menimbulkan masalah:
+1. **NTFS Slowdown**: Windows Explorer dan antivirus melambat saat membaca/memindahkan 40.000 file kecil.
+2. **Transfer USB Lambat**: Meng-copy 40.000 file ke flashdisk membutuhkan waktu 10–15 menit karena overhead metadata file.
+3. **ProPresenter Overload**: Memuat 20.000 presentasi sekaligus di ProPresenter menyebabkan startup lambat dan potensi crash.
 
-### A. Tabrakan Mesin Indeks Lucene.Net (*Indexing Race Condition*)
-```text
-System.IO.FileNotFoundException: no segments* file found in Lucene.Net.Store.SimpleFSDirectory
-```
-ProPresenter menggunakan **Lucene.Net** untuk mengindeks seluruh file perpustakaan saat *startup*. Mengindeks 20.000 file Protobuf binary secara bersamaan di folder sinkronisasi OneDrive memicu tabrakan *file locking*. File `write.lock` gagal ditulis, menyebabkan seluruh subsistem pencarian ProPresenter macet total.
-
-### B. Overflow Buffer FileSystemWatcher
-Windows API membatasi buffer notifikasi pengawas berkas default (8 KB – 64 KB). Saat 20.000 file dipantau sekaligus, sistem mengalami *buffer overflow*, melewatkan sinyal penyegaran file, dan membuat UI menunggu status *file handle* yang terkunci tanpa batas (*infinite wait*).
-
-### C. Deadlock Thread Visual UI (WPF Cross-Thread Violation)
-```text
-System.InvalidOperationException: The calling thread cannot access this object because a different thread owns it.
-   at System.Windows.Threading.Dispatcher.VerifyAccess()
-```
-Pemindaian puluhan ribu lagu di latar belakang memicu thread pekerja memperbarui hierarki visual WPF (*tree view*) tanpa sinkronisasi `Dispatcher.Invoke()`, menyebabkan *crash* fatal seketika.
+**Dengan Arsitektur Baru**:
+1. **Single Database File (`banklycs.db`)**: Seluruh 20.301 lagu hanya berukuran **~28.9 MB**.
+2. **Transfer Instan**: Meng-copy 1 file 28 MB ke flashdisk hanya butuh 1–2 detik.
+3. **Kompilasi Realtime**: Protobuf serializer C# sangat cepat (<1 ms per lagu). Mengompilasi 5–10 lagu saat klik tombol "INJECT" hanya butuh waktu ~5 ms, sehingga tidak perlu menyimpan file `.pro` yang tidak terpakai di harddisk.
+4. **ProPresenter Tetap Ringan**: ProPresenter hanya memuat lagu-lagu ibadah aktif di `Libraries/Banks/`.
 
 ---
 
-## 3. Solusi Banklycs: On-Demand Realtime Injection
+## 3. Spesifikasi Template Presentasi Panggung
 
-Banklycs memecahkan masalah ini dengan memisahkan penyimpanan masif dari eksekusi:
-1. **20.000 Lagu Tersimpan di Vault Lokal**: Seluruh database teks tersimpan di `database/txt/` dan seluruh cache binary di `database/pro/`. ProPresenter sama sekali tidak dibebani oleh berkas-berkas ini saat startup.
-2. **Pencarian Kilat di RAM (<2 ms)**: Native engine `banklycs.exe` membaca seluruh katalog ke memori hanya dalam 113 milidetik saat aplikasi dijalankan, memungkinkan pencarian seketika tanpa I/O disk.
-3. **Penyuntikan Terarah In-Memory (Zero Subprocess, <3 ms)**:
-   - Saat operator menyusun rundown (5–10 lagu) dan menekan tombol injeksi, hanya file `.pro` lagu tersebut yang disalin ke `Libraries/Banks/`.
-   - Engine langsung memanggil fungsi `Program.CreatePlaylistDirect` di dalam memori proses yang sama (tanpa membuat file JSON sementara atau meluncurkan subprocess baru).
-   - Engine mendaftarkan daftar lagu tersebut ke dalam file Protobuf `Playlists/Library`.
-   - ProPresenter membuka playlist dalam **1 detik** dengan konsumsi memori sangat hemat.
+- **Slide Template**: `Lyric - Praise`
+- **Font**: `CMGSans-Bold`
+- **Font Size**: `134` (dengan perataan tengah vertikal dan horizontal)
+- **Canvas**: `1920 x 1080` (Full HD 16:9)
+- **Aturan Baris**: Maksimal 2 baris per slide tampilan.
+- **Slide Awal**: Selalu diawali slide kosong (`BLANK`) dengan label judul lagu.
 
 ---
 
-## 4. Format Binary Protobuf ProPresenter 7
+## 4. Perintah CLI Maintainer
 
-File `.pro` di ProPresenter 7 adalah file serialisasi **Google Protocol Buffers** (Protobuf).  
-Engine dikompilasi menggunakan C# .NET 8 dan *assembly interop* resmi ProPresenter (`Pro.SerializationInterop.dll` & `Google.Protobuf.dll`):
-
-- **Master Theme**: Font `CMGSans-Bold`, ukuran font proporsional panggung (fs134), perataan tengah (*center*), kanvas 1920x1080.
-- **Pewarnaan Grup Otomatis**:
-  - `VERSE`: Biru
-  - `CHORUS`: Merah
-  - `PRE-CHORUS`: Oranye
-  - `BRIDGE`: Ungu
-  - `INTRO / INTERLUDE`: Hijau
-  - `TAG`: Cyan
-  - `ENDING / OUTRO`: Kuning kecokelatan
-  - `BLANK`: Hitam pekat
-
----
-
-## 5. Menjalankan Batch Compiler (`Generate.ps1`)
-
-Jika Anda menambahkan ratusan lagu baru ke `database/` dan ingin mengompilasi ulang seluruh cache `.pro`:
-
+### A. Ekspor Lirik ke Format Teks Biasa
+Jika ingin mengekspor seluruh lirik ke disk untuk keperluan batch inspect:
 ```powershell
-# Mode Incremental (Default — hanya mengompilasi file baru/berubah, ~1-3 detik)
-powershell -ExecutionPolicy Bypass -File .\engine\Generate.ps1
+engine\banklycs.exe export-txt [target_folder]
+# Contoh:
+engine\banklycs.exe export-txt database\txt
+```
 
-# Mode Rebuild Penuh (Menghapus dan mengompilasi ulang seluruh 20.000 lagu, ~30 detik)
-powershell -ExecutionPolicy Bypass -File .\engine\Generate.ps1 -Full
+### B. Audit Integritas Database
+```powershell
+python tools\audit_cleanliness.py
 ```

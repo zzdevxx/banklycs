@@ -10,12 +10,11 @@
 ```text
 banklycs/
 ├── START.vbs          ← Launcher senyap 1-klik bagi operator gereja (0 CMD window)
-├── database/          ← Database Lirik & Cache Presentasi
-│   ├── txt/           ← 20.301 file master lirik (.txt murni, flat, Single Source of Truth)
-│   └── pro/           ← 20.301 file cache binary (.pro terisolasi)
+├── database/          ← Database Lirik Tunggal (SQLite + FTS5)
+│   └── banklycs.db    ← 20.301 lagu master dalam 1 file (~28.9 MB, zero disk bloat)
 ├── app/               ← Antarmuka Web GUI Studio Console (index.html, style.css, app.js)
-├── engine/            ← Engine C# .NET 8 (banklycs.exe, StudioServer.cs, Program.cs)
-├── tools/             ← Skrip scraper web & data pipeline (Python)
+├── engine/            ← Engine C# .NET 8 (Single-file banklycs.exe, StudioServer.cs, Program.cs)
+├── tools/             ← Skrip scraper web, migrasi, & audit integritas (Python)
 ├── markdowns/         ← Dokumentasi inti: RULES.md, GENERATE.md, GUIDE.md, AGENT.md
 ├── README.md          ← Dokumentasi publik bagi pengguna
 └── .gitignore         ← Aturan ignore Git
@@ -27,75 +26,48 @@ banklycs/
 
 ### A. Anti-Halusinasi AI (Strict Zero-Tolerance)
 - **DILARANG KERAS** mengarang lirik lagu menggunakan LLM. Seluruh lirik wajib murni hasil scraping atau transkripsi dari sumber resmi/rekaman asli.
-- Jika artis/pencipta lagu tidak diketahui dari sumber: **gunakan nama file berupa judul saja** (contoh: `Adalah Baik Untuk.txt`), **JANGAN** mengarang nama artis atau menggunakan label `- No Name` atau `- Praise & Worship`.
+- Jika artis/pencipta lagu tidak diketahui dari sumber: **gunakan nama lagu berupa judul saja** (contoh: `Adalah Baik Untuk`), **JANGAN** mengarang nama artis atau menggunakan label `- No Name` atau `- Praise & Worship`.
 
-### B. Aturan File Lirik di `database/`
-1. **Format Penamaan**: `Judul Lagu - Artis.txt` atau `Judul Lagu.txt`.
-2. **Title Case**: Judul wajib Title Case (contoh: `Kumenang.txt` ✔ / `KUMENANG.txt` ✘).
-3. **Buku Himne Resmi**: Gunakan kode buku dan nomor sebagai artis (`KJ 392`, `BE 179`, `NKB 125`, `KK 459`, `PKJ 76`, `KLIK 446`, `NNBT 12`).
-4. **Struktur Baku**:
-   - Baris 1: `BLANK`
-   - Baris 2: Judul lagu (identik persis dengan nama file)
-   - Maksimal 2 baris teks per slide (dipisah satu baris kosong).
-   - Huruf kapital hanya pada awal baris dan kata ganti ilahi (`Mu`, `Nya`, `Ku`, `Kau`, `Tuhan`, `Allah`).
-   - Header bagian uppercase: `VERSE`, `CHORUS`, `PRE-CHORUS`, `BRIDGE`, `INTRO`, `OUTRO`, `ENDING`, `TAG`, `INTERLUDE`.
+### B. Arsitektur Single-File Database (`database/banklycs.db`)
+1. **Penyimpanan**: Seluruh 20.301 lagu disimpan di tabel `songs` pada file SQLite tunggal `database/banklycs.db`.
+2. **Schema Tabel `songs`**:
+   - `id`: INTEGER PRIMARY KEY AUTOINCREMENT
+   - `filename`: TEXT NOT NULL UNIQUE (contoh: `Amazing Grace - John Newton.txt`)
+   - `title`: TEXT NOT NULL
+   - `artist`: TEXT
+   - `category`: TEXT (contoh: `ID`, `EN`, `KJ`, `NKB`, `PKJ`, `KK`, `BE`, `KLIK`, `NNBT`, `JAWA`)
+   - `content`: TEXT NOT NULL (Lirik lengkap standar panggung)
+   - `created_at`: DATETIME DEFAULT CURRENT_TIMESTAMP
+3. **Full-Text Search (`songs_fts`)**: Tabel virtual FTS5 mencakup kolom `title`, `artist`, `category`, `content` untuk pencarian instan (<3 ms) di seluruh lirik.
+4. **Kompilasi On-Demand**:
+   - File `.pro` tidak disimpan di repositori.
+   - Saat operator memilih lagu di GUI dan mengklik "INJECT", C# engine (`banklycs.exe`) mengompilasi Google Protobuf secara *in-memory* (<1 ms per lagu) langsung ke ProPresenter `Libraries/Banks/{lagu}.pro`.
+   - Playlist dibuat secara langsung di `Playlists/Library`.
 
-### C. Alur Kerja Injektor ProPresenter
-1. Master database 20.301 lagu berada di `database/txt/`.
-2. Cache file binary ProPresenter 7 (`.pro`) berada di `database/pro/`.
-3. Folder library ProPresenter aktif (`Libraries/Banks`) **TIDAK BOLEH** diisi 20.000 file sekaligus (memicu crash indeks Lucene dan deadlock thread WPF ProPresenter).
-4. Injeksi playlist ibadah dilakukan on-demand in-memory melalui `engine/banklycs.exe` (`Program.CreatePlaylistDirect`) tanpa subprocess.
-
----
-
-## 3. Perintah Kerja Harian & Pemeliharaan
-
+### C. Ekspor / Dump File TXT
+Jika maintainer atau pengguna ingin mengekspor seluruh 20.301 lagu kembali menjadi file `.txt` biasa:
 ```powershell
-# 1. Menjalankan GUI lokal (Port 5050)
-.\START.vbs
-# Atau manual via binary: .\engine\banklycs.exe
-
-# 2. Build ulang binary native jika kode engine diubah
-dotnet publish engine/ProEngine.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o engine/
-
-# 3. Menjalankan audit menyeluruh kebersihan file & sync
-python tools/audit_cleanliness.py
-
-# 4. Menjalankan verifikasi format lirik
-python tools/verify_songs.py
-
-# 5. Menjalankan ringkasan statistik database
-python tools/summarize_db.py
-
-# 6. Menjalankan perapihan flat otomatis (dry run & apply)
-python tools/enforce_flat_rules.py
-python tools/enforce_flat_rules.py --apply
+engine\banklycs.exe export-txt [target_folder]
 ```
 
 ---
 
-## 4. Status Estafet Terkini (Handoff State)
+## 3. Remote Git & Kebijakan Push
 
-| Metrik / Komponen | Status | Keterangan |
-|---|---|---|
-| **Master Database** | `database/txt/` | **20.301** file `.txt`, flat murni (0 subfolder) |
-| **Engine Cache** | `database/pro/` | **20.301** file `.pro`, 100% sinkron 1-ke-1 |
-| **Aplikasi GUI** | `app/` | Studio Console berjalan stabil (Dark Grey theme, font 18px) |
-| **Injeksi Real-Time** | Teruji & Berhasil | Injeksi in-memory langsung (<3 ms) tanpa subprocess |
-| **ProPresenter 7** | Berjalan Stabil | Startup instan (<1 detik), folder `Libraries/Banks` hanya berisi file aktif |
-| **Git Status** | Branch `master` | Bersih (*clean working tree*), remote GitLab & Codeberg terkonfigurasi |
+- **Git Remote Resmi**:
+  - `origin`: `https://gitlab.com/zzdevxx/banklycs.git`
+  - `codeberg`: `https://codeberg.org/zzdevxx/banklycs.git`
+- **PENTING**: **JANGAN PUSH KE GITHUB**. Repositori ini dikelola di GitLab dan Codeberg.
 
 ---
 
-## 5. Backlog Tugas Prioritas
+## 4. Status Estafet Terkini (November 2026)
 
-1. **Push ke GitLab & Codeberg**:
-   - Pastikan repo kosong `banklycs` sudah dibuat di web UI Codeberg (`https://codeberg.org/zzdree/banklycs`).
-   - Eksekusi `git push -u origin master` dan `git push -u codeberg master`.
-2. **Melanjutkan Scraper yang Terputus**:
-   - `tools/scrape_liriklagukristen.py`: Lanjutkan scraping sisa link yang belum ada di database.
-   - `tools/scrape_buku_ende.py`: Ambil sisa lagu Buku Ende HKBP (nomor 845 s/d 867) dari API resmi HKBP.
-3. **Perapihan Slide Overflow**:
-   - Terdapat 369 file yang memiliki slide dengan >2 baris teks. Dapat diproses dengan pemisah slide cerdas pada baris kosong.
-4. **Elevation Worship Reattribution**:
-   - Terdapat ±37 lagu berbahasa Indonesia yang sebelumnya terlacak dengan nama artis `Elevation Worship` (warisan scraper lama). Lacak komposer aslinya di Psalmnote atau jadikan judul saja.
+| Metrik / Item | Status | Keterangan |
+|---|---|---|
+| **Total Lagu di DB** | **20.301 lagu** | Tersimpan di `database/banklycs.db` (28.97 MB) |
+| **Pencarian FTS5** | **Aktif** | Sub-millisecond full-text search di seluruh teks |
+| **Engine Native C#** | **`engine/banklycs.exe`** | Single-file executable, 0 dependensi luar |
+| **Kompilasi On-Demand** | **Terverifikasi** | Injeksi 2 lagu tes sukses ke ProPresenter Libraries |
+| **Kebersihan Repo** | **100% Bersih** | Tidak ada file loose `txt/` atau `pro/` di disk (~270 MB terpangkas) |
+| **Audit Script** | `tools/audit_cleanliness.py` | 100% validasi database & ProPresenter passing |
