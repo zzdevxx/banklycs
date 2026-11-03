@@ -35,29 +35,22 @@
 
 ## 🚀 Panduan Memulai Cepat (Quick Start)
 
-### Syarat Sistem
-- **Windows 10 / 11**
-- **ProPresenter 7** (Library terdaftar otomatis di folder Documents/ProPresenter)
-- **PowerShell** (Bawaan Windows)
-- (Opsional) **Python 3.10+** jika ingin menjalankan tools pemeliharaan & web scraper.
+### 1. Menggunakan GUI Playlist Builder (Direkomendasikan ⭐)
+Cukup **double-click** file:
+```
+Start-GUI.bat
+```
+- Aplikasi **Studio Console** akan langsung terbuka di layar laptop Anda (antarmuka dark grey berkecepatan tinggi, anti-lag).
+- Cari lagu dari 20.301 database master secara instan (<2 milidetik).
+- Tinjau lirik bait per bait pada panel tengah (*live slide inspector*).
+- Susun daftar lagu ibadah pada panel kanan, lalu klik tombol **`INJECT KE PROPRESENTER`**.
+- Buka ProPresenter 7 — Playlist ibadah langsung tersedia dan ProPresenter terbuka dalam **1 detik tanpa lag maupun crash!**
 
-### 1. Sinkronisasi Bank ke ProPresenter (1-Klik)
-Buka terminal PowerShell di folder ini, lalu jalankan:
-
+### 2. Sinkronisasi Manual Engine (CLI)
+Jika ingin mengompilasi ulang database `.pro`:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\Generate.ps1
 ```
-
-- Engine akan membaca folder master `TXT\`, mengompilasi menjadi format `.pro` di `PRO\`, dan mendaftarkannya langsung ke **ProPresenter Library `Banks`**.
-- Buka ProPresenter 7 → Tab Search (`Ctrl + F`) → Lagu sudah langsung siap digunakan!
-
-### 2. Mode Full Rebuild (Hati-hati)
-Jika Anda ingin membersihkan seluruh library dan membangun ulang dari nol:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\Generate.ps1 -Full
-```
-> ⚠️ **Catatan**: Mode `-Full` akan membersihkan cache dan mereset playlist library. Gunakan mode standar jika ada rundown playlist ibadah aktif.
 
 ---
 
