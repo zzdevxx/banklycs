@@ -3,149 +3,194 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Banklycs — Rundown & Playlist Builder for ProPresenter</title>
+  <title>ProPresenter 7 - Lyric Vault & Direct Injector</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23f38020'/><text x='50%' y='68%' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='55' font-weight='900' fill='%23000'>P7</text></svg>">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <!-- Header Bar -->
-  <header class="top-bar">
-    <div class="brand-section">
-      <div class="brand-badge">PRO7</div>
-      <div class="brand-info">
-        <h1 class="brand-title">BANKLYCS</h1>
-        <span class="brand-subtitle">MASTER WORSHIP VAULT & PROPRESENTER INJECTOR</span>
-      </div>
-    </div>
-    <div class="system-status" id="system-status">
-      <span class="status-indicator"></span>
-      <span id="status-text">Memuat katalog lagu...</span>
-    </div>
-  </header>
-
-  <!-- Main 3-Column Studio Console Layout -->
-  <main class="console-layout">
-    
-    <!-- LEFT PANEL: Master Database & Search -->
-    <section class="panel panel-left" aria-label="Katalog Lagu Master">
-      <div class="panel-header">
-        <h2 class="panel-title">KATALOG MASTER</h2>
-        <span class="count-badge" id="results-count">0 LAGU</span>
+<body class="pro-app">
+  <!-- ProPresenter 7 Native Window Header / Toolbar -->
+  <header class="pro-toolbar">
+    <div class="tb-left">
+      <div class="pro-logo">
+        <svg class="pro-icon-p7" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <rect x="3" y="3" width="18" height="18" rx="3" fill="#f38020" stroke="none"/>
+          <path d="M7 7h5a3 3 0 0 1 0 6H7V7zm0 6h4" stroke="#000" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span class="pro-brand-text">ProPresenter 7</span>
+        <span class="pro-subbrand-text">VAULT</span>
       </div>
 
-      <!-- Search Input Box -->
-      <div class="search-container">
-        <input 
-          type="text" 
-          id="search-input" 
-          class="search-input" 
-          placeholder="Ketik judul, artis, nomor (KJ, BE, NKB)..."
+      <!-- Quick Search Bar inside Toolbar -->
+      <div class="pro-search-box">
+        <svg class="search-glyph" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+        </svg>
+        <input
+          type="text"
+          id="search-input"
+          class="pro-search-input"
+          placeholder="Search Library... ( / )"
           autocomplete="off"
           spellcheck="false"
         >
-        <button id="clear-search-btn" class="clear-btn" title="Hapus pencarian">BATAL</button>
+        <button id="clear-search-btn" class="pro-search-clear" title="Clear Search (Esc)">✕</button>
+      </div>
+    </div>
+
+    <!-- Category Tabs Filter -->
+    <div class="tb-center" role="tablist">
+      <button class="pro-tab active" data-category="ALL" role="tab" aria-selected="true">All</button>
+      <button class="pro-tab" data-category="ID" role="tab" aria-selected="false">Praise</button>
+      <button class="pro-tab" data-category="EN" role="tab" aria-selected="false">English</button>
+      <button class="pro-tab" data-category="KJ" role="tab" aria-selected="false">KJ</button>
+      <button class="pro-tab" data-category="PKJ" role="tab" aria-selected="false">PKJ</button>
+      <button class="pro-tab" data-category="NKB" role="tab" aria-selected="false">NKB</button>
+      <button class="pro-tab" data-category="KK" role="tab" aria-selected="false">KK</button>
+      <button class="pro-tab" data-category="BE" role="tab" aria-selected="false">BE</button>
+      <button class="pro-tab" data-category="KLIK" role="tab" aria-selected="false">KLIK</button>
+    </div>
+
+    <!-- Right Controls: Status, Font Scale, Fullscreen, Inject Action -->
+    <div class="tb-right">
+      <div class="pro-status-badge" id="system-status">
+        <span class="pro-dot" id="status-indicator"></span>
+        <span id="status-text">ProPresenter 7 Ready</span>
       </div>
 
-      <!-- Quick Category Filter Bar -->
-      <div class="category-filter-bar" role="tablist">
-        <button class="filter-chip active" data-category="ALL">SEMUA</button>
-        <button class="filter-chip" data-category="ID">INDONESIA</button>
-        <button class="filter-chip" data-category="EN">ENGLISH</button>
-        <button class="filter-chip" data-category="KJ">KJ</button>
-        <button class="filter-chip" data-category="PKJ">PKJ</button>
-        <button class="filter-chip" data-category="NKB">NKB</button>
-        <button class="filter-chip" data-category="KK">KK</button>
-        <button class="filter-chip" data-category="BE">BE</button>
-        <button class="filter-chip" data-category="KLIK">KLIK</button>
+      <div class="pro-scale-group" title="Ubah Ukuran Tampilan (Scale)">
+        <button id="zoom-out-btn" class="pro-zoom-btn" title="Kecilkan Skala Tampilan" aria-label="Kecilkan Skala">A−</button>
+        <span id="zoom-level-label" class="pro-zoom-level">120%</span>
+        <button id="zoom-in-btn" class="pro-zoom-btn" title="Perbesar Skala Tampilan" aria-label="Perbesar Skala">A+</button>
       </div>
 
-      <!-- Songs List Container -->
-      <div class="song-list-scroll" id="song-list" role="listbox">
-        <!-- Rendered by app.js -->
-      </div>
-    </section>
+      <button id="fullscreen-toggle" class="pro-btn-ghost" title="Layar Penuh (F11)">
+        <span class="pro-btn-glyph">⛶</span>
+        <span>Screen</span>
+      </button>
 
-    <!-- MIDDLE PANEL: Live Slide & Lyric Inspector -->
-    <section class="panel panel-middle" aria-label="Inspeksi Lirik Slide">
-      <div class="panel-header">
-        <div class="inspector-meta">
-          <span class="inspector-label">INSPEKTOR LIRIK</span>
-          <h2 class="inspector-title" id="inspector-song-title">Pilih lagu untuk melihat slide</h2>
+      <button id="inject-btn" class="pro-btn-primary" disabled>
+        <span class="pro-btn-glyph">▶</span>
+        <span>INJECT TO PRO7</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workstation Layout: Left Sidebar + Center/Right Presentation Grid -->
+  <main class="pro-workspace">
+
+    <!-- LEFT SIDEBAR: Library Master & Playlist Rundown -->
+    <aside class="pro-sidebar" aria-label="ProPresenter Library and Playlist">
+
+      <!-- Top Section: Library Master Songs -->
+      <section class="pro-sidebar-section pro-library-section">
+        <div class="pro-section-header">
+          <div class="pro-section-title-wrap">
+            <svg class="pro-folder-icon" viewBox="0 0 16 16" fill="#f38020">
+              <path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h4.344A2 2 0 0 1 16 5v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4.34c0-.16.03-.317.086-.462l.454-.008z"/>
+            </svg>
+            <span class="pro-section-title">LIBRARY</span>
+          </div>
+          <span class="pro-badge-count" id="results-count">0</span>
         </div>
-        <button id="add-to-rundown-btn" class="btn btn-primary" disabled>
-          + TAMBAH KE RUNDOWN
-        </button>
-      </div>
 
-      <div class="inspector-content" id="inspector-content">
-        <div class="empty-placeholder">
-          <p class="placeholder-text">Klik salah satu lagu di daftar kiri untuk meninjau lirik dan struktur slide.</p>
+        <!-- Songs Scroll List -->
+        <div class="pro-list-container" id="song-list" role="listbox">
+          <!-- Populated by app.js -->
+        </div>
+      </section>
+
+      <!-- Resizer / Splitter bar -->
+      <div class="pro-splitter"></div>
+
+      <!-- Bottom Section: Active Playlist Rundown -->
+      <section class="pro-sidebar-section pro-playlist-section">
+        <div class="pro-section-header">
+          <div class="pro-section-title-wrap">
+            <svg class="pro-playlist-icon" viewBox="0 0 16 16" fill="#32ade6">
+              <path d="M2.5 3.5a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-11zm0 3a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-11zm0 3a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zm0 3a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7z"/>
+            </svg>
+            <input
+              type="text"
+              id="playlist-name-input"
+              class="pro-playlist-name-input"
+              value="Sunday Service"
+              placeholder="Playlist Name..."
+              spellcheck="false"
+            >
+          </div>
+          <span class="pro-badge-count pro-badge-cyan" id="rundown-count">0</span>
+        </div>
+
+        <!-- Rundown Items List -->
+        <div class="pro-list-container" id="rundown-list" role="list">
+          <!-- Populated by app.js -->
+        </div>
+
+        <!-- Playlist Footer Utilities -->
+        <div class="pro-playlist-footer">
+          <button id="copy-wa-btn" class="pro-subbtn" title="Copy Rundown for WhatsApp">
+            📋 Copy for WA
+          </button>
+          <button id="clear-rundown-btn" class="pro-subbtn pro-subbtn-danger" title="Clear Rundown">
+            Clear
+          </button>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- CENTER & RIGHT: Live Slide Presentation Canvas -->
+    <section class="pro-presentation-area" aria-label="Slide Presentation Canvas">
+
+      <!-- Presentation Top Bar -->
+      <div class="pro-presentation-header">
+        <div class="pres-title-meta">
+          <div class="pres-category-tag" id="inspector-category">READY</div>
+          <h2 class="pres-song-title" id="inspector-song-title">Select a song from Library</h2>
+          <span class="pres-artist-info" id="inspector-artist"></span>
+        </div>
+
+        <div class="pres-actions">
+          <button id="add-to-rundown-btn" class="pro-btn-secondary" disabled>
+            + Add to Playlist
+          </button>
         </div>
       </div>
-    </section>
 
-    <!-- RIGHT PANEL: Sunday Service Rundown & Injector -->
-    <section class="panel panel-right" aria-label="Penyusun Playlist Ibadah">
-      <div class="panel-header">
-        <h2 class="panel-title">RUNDOWN PLAYLIST</h2>
-        <span class="count-badge" id="rundown-count">0 LAGU</span>
+      <!-- 16:9 Black Widescreen Slide Thumbnails Grid -->
+      <div class="pro-slide-grid" id="inspector-content" tabindex="0">
+        <div class="pro-empty-canvas">
+          <svg class="empty-slide-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <rect x="2" y="3" width="20" height="14" rx="2" stroke-width="1.5"/>
+            <path d="M8 21h8m-4-4v4" stroke-width="1.5"/>
+          </svg>
+          <p class="empty-main-text">No Presentation Selected</p>
+          <p class="empty-sub-text">Click any song from the Library on the left to preview slide canvas.</p>
+        </div>
       </div>
 
-      <!-- Playlist Setup Box -->
-      <div class="playlist-config-box">
-        <label for="playlist-name-input" class="field-label">NAMA PLAYLIST PROPRESENTER:</label>
-        <input 
-          type="text" 
-          id="playlist-name-input" 
-          class="text-input" 
-          placeholder="Contoh: Ibadah Raya 8 Nov 2026"
-        >
-      </div>
-
-      <!-- Rundown Song Items -->
-      <div class="rundown-list-scroll" id="rundown-list">
-        <!-- Rendered by app.js -->
-      </div>
-
-      <!-- Footer Action Area -->
-      <div class="rundown-actions">
-        <button id="clear-rundown-btn" class="btn btn-secondary">
-          KOSONGKAN
-        </button>
-        <button id="inject-btn" class="btn btn-inject" disabled>
-          INJECT KE PROPRESENTER
-        </button>
-      </div>
     </section>
 
   </main>
 
-  <!-- Notification Dialog / Modal -->
+  <!-- ProPresenter Dark HUD Modal Dialog -->
   <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3 id="modal-title" class="modal-title">Pemberitahuan</h3>
-        <button id="modal-close-btn" class="modal-close" aria-label="Tutup">✕</button>
+    <div class="modal-window">
+      <div class="modal-window-header">
+        <div class="modal-window-title" id="modal-title">ProPresenter 7 Notification</div>
+        <button id="modal-close-btn" class="modal-window-close">✕</button>
       </div>
-      <div class="modal-body" id="modal-body">
-        <!-- Content -->
+      <div class="modal-window-body" id="modal-body">
+        <!-- Content injected dynamically -->
       </div>
-      <div class="modal-footer">
-        <button id="modal-ok-btn" class="btn btn-primary">OK</button>
+      <div class="modal-window-footer">
+        <button id="modal-ok-btn" class="pro-btn-primary">OK</button>
       </div>
     </div>
   </div>
 
-  <!-- Bottom Status Bar -->
-  <footer class="bottom-bar">
-    <div class="bar-left">
-      <span>SERVER: LOCAL 127.0.0.1:5050</span>
-      <span class="divider">|</span>
-      <span id="bar-workspace">WORKSPACE: banklycs</span>
-    </div>
-    <div class="bar-right">
-      <span>SHORTCUT: [ / ] FOKUS CARI &nbsp;|&nbsp; [ ESC ] BATAL</span>
-    </div>
-  </footer>
+  <!-- Minimal ProPresenter Floating HUD Toast -->
+  <div id="toast" class="pro-toast hidden" role="status" aria-live="polite"></div>
 
   <script src="app.js"></script>
 </body>

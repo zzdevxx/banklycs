@@ -11,7 +11,7 @@
 banklycs/
 ├── START.vbs          ← Launcher senyap 1-klik bagi operator gereja (0 CMD window)
 ├── database/          ← Database Lirik Tunggal (SQLite + FTS5)
-│   └── banklycs.db    ← 20.301 lagu master dalam 1 file (~28.9 MB, zero disk bloat)
+│   └── banklycs.db    ← 25.904 lagu master dalam 1 file (~44 MB, zero disk bloat)
 ├── app/               ← Antarmuka Web GUI Studio Console (index.html, style.css, app.js)
 ├── engine/            ← Engine C# .NET 8 (Single-file banklycs.exe, StudioServer.cs, Program.cs)
 ├── tools/             ← Skrip scraper web, migrasi, & audit integritas (Python)
@@ -29,7 +29,7 @@ banklycs/
 - Jika artis/pencipta lagu tidak diketahui dari sumber: **gunakan nama lagu berupa judul saja** (contoh: `Adalah Baik Untuk`), **JANGAN** mengarang nama artis atau menggunakan label `- No Name` atau `- Praise & Worship`.
 
 ### B. Arsitektur Single-File Database (`database/banklycs.db`)
-1. **Penyimpanan**: Seluruh 20.301 lagu disimpan di tabel `songs` pada file SQLite tunggal `database/banklycs.db`.
+1. **Penyimpanan**: Seluruh 25.904 lagu disimpan di tabel `songs` pada file SQLite tunggal `database/banklycs.db`.
 2. **Schema Tabel `songs`**:
    - `id`: INTEGER PRIMARY KEY AUTOINCREMENT
    - `filename`: TEXT NOT NULL UNIQUE (contoh: `Amazing Grace - John Newton.txt`)
@@ -65,9 +65,9 @@ engine\banklycs.exe export-txt [target_folder]
 
 | Metrik / Item | Status | Keterangan |
 |---|---|---|
-| **Total Lagu di DB** | **20.301 lagu** | Tersimpan di `database/banklycs.db` (28.97 MB) |
-| **Pencarian FTS5** | **Aktif** | Sub-millisecond full-text search di seluruh teks |
+| **Total Lagu di DB** | **25.904 lagu** | Tersimpan di `database/banklycs.db` (~44 MB) |
+| **Pencarian FTS5** | **Aktif** | Sub-millisecond full-text search di seluruh teks (0.60 ms) |
 | **Engine Native C#** | **`engine/banklycs.exe`** | Single-file executable, 0 dependensi luar |
-| **Kompilasi On-Demand** | **Terverifikasi** | Injeksi 2 lagu tes sukses ke ProPresenter Libraries |
+| **Kompilasi On-Demand** | **Terverifikasi** | Injeksi on-demand sukses ke ProPresenter Libraries |
 | **Kebersihan Repo** | **100% Bersih** | Tidak ada file loose `txt/` atau `pro/` di disk (~270 MB terpangkas) |
 | **Audit Script** | `tools/audit_cleanliness.py` | 100% validasi database & ProPresenter passing |

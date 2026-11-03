@@ -1,8 +1,8 @@
 # RULES — DOKTRIN & STANDAR LIRIK MASTER
 
 > **Proyek**: `banklycs` — Bank Lirik & Injektor Cepat ProPresenter 7  
-> **Master Database**: `database/txt/` — **20.301 lagu master .txt datar**  
-> **Presentation Cache**: `database/pro/` (file binary Protobuf ProPresenter 7)  
+> **Master Database**: `database/banklycs.db` — **25.904 lagu master terkurasi (SQLite FTS5)**  
+> **Presentation Cache**: On-demand in-memory compilation (<1 ms per lagu)  
 > **Studio Console GUI**: `app/` + `engine/banklycs.exe` (1-klik via `START.vbs`)  
 > **Terakhir diperbarui**: 2026-11-03
 

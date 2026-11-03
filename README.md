@@ -1,34 +1,34 @@
 # 🎶 Banklycs — ProPresenter 7 Worship Lyrics Engine & Database
 
-[![Catalog](https://img.shields.io/badge/Catalog-20%2C301%20Songs-blue?style=flat-square&logo=musicbrainz)](https://github.com/zzdevxx/banklycs)
-[![Database](https://img.shields.io/badge/Database-SQLite%20FTS5%20(30MB)-success?style=flat-square&logo=sqlite)](https://github.com/zzdevxx/banklycs)
+[![Catalog](https://img.shields.io/badge/Catalog-25%2C904%20Songs-blue?style=flat-square&logo=musicbrainz)](https://github.com/zzdevxx/banklycs)
+[![Database](https://img.shields.io/badge/Database-SQLite%20FTS5%20(44MB)-success?style=flat-square&logo=sqlite)](https://github.com/zzdevxx/banklycs)
 [![Target](https://img.shields.io/badge/Target-ProPresenter%207-orange?style=flat-square)](https://renewedvision.com/propresenter/)
 [![Engine](https://img.shields.io/badge/Engine-C%23%20.NET%208%20Native-purple?style=flat-square&logo=dotnet)](https://github.com/zzdevxx/banklycs)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
-> **Koleksi 20.301+ Lagu Rohani & Himne Siap Tayang untuk ProPresenter 7.**  
+> **Koleksi 25.904+ Lagu Rohani & Himne Siap Tayang untuk ProPresenter 7.**  
 > Dirancang khusus untuk tim multimedia gereja, operator proyektor, dan worship leader agar **tidak perlu lagi mencari & *copy-paste* lirik dari browser saat ibadah.**
 
 ---
 
 ## ⚡ Fitur Utama
 
-- **20.301 Lagu Terkurasi & Siap Tayang**:
-  - **Praise & Worship Indonesia (14.600+ lagu)**: GMS Live, JPCC Worship, Symphony Worship, NDC Worship, Bethel, Sari Simorangkir, Franky Sihombing, dll.
-  - **English Contemporary & Classic Hymns (1.800+ lagu)**: Hillsong Worship, Elevation Worship, Bethel Music, Planetshakers, Chris Tomlin, dll.
+- **25.904 Lagu Terkurasi & Siap Tayang (100% Zero-Duplicate)**:
+  - **Praise & Worship Indonesia (15.350+ lagu)**: GMS Live, JPCC Worship, Symphony Worship, NDC Worship, Bethel, Sari Simorangkir, Franky Sihombing, dll.
+  - **English Contemporary & Classic Hymns (6.370+ lagu)**: Hillsong Worship, Elevation Worship, Bethel Music, Planetshakers, Chris Tomlin, Matt Redman, Songs of Fellowship, Martin Luther, John Newton, dll.
   - **Buku Nyanyian & Himne Gereja Lengkap**:
-    - **KJ** (Kidung Jemaat) — 1.059 lagu
-    - **NKB** (Nyanyikanlah Kidung Baru) — 282 lagu
-    - **PKJ** (Pelengkap Kidung Jemaat) — 322 lagu
-    - **KK** (Kidung Keesaan) — 766 lagu
-    - **KLIK** (Kumpulan Lagu Ibadah Kreatif) — 454 lagu
+    - **KJ** (Kidung Jemaat) — 1.296 lagu
     - **BE** (Buku Ende HKBP Batak) — 844 lagu
-    - **NNBT** (Nyanyian Baru Bagi Tuhan) — 45 lagu
-    - **Kidung Pasamuwan Jawi** — 1 lagu
+    - **KK** (Kidung Keesaan) — 766 lagu
+    - **KLIK** (Kumpulan Lagu Ibadah Kreatif) — 462 lagu
+    - **PKJ** (Pelengkap Kidung Jemaat) — 401 lagu
+    - **NKB** (Nyanyikanlah Kidung Baru) — 364 lagu
+    - **NNBT** (Nyanyian Baru Bagi Tuhan) — 46 lagu
+    - **Kidung Pasamuwan Jawi** — 4 lagu
 - **Arsitektur Single-File Database (`database/banklycs.db`)**:
-  - Semua 20.301 lagu tersimpan dalam **1 file SQLite tunggal (~30 MB)** lengkap dengan indeks **FTS5 (Full-Text Search)**.
+  - Semua 25.904 lagu tersimpan dalam **1 file SQLite tunggal (~44 MB)** lengkap dengan indeks **FTS5 (Full-Text Search)**.
   - Tidak ada lagi puluhan ribu file kecil yang memperlambat Windows NTFS atau proses transfer flashdisk USB.
-  - Pencarian lirik super cepat (<2 milidetik) langsung dari RAM/FTS5.
+  - Pencarian lirik super cepat (<0.4 milidetik) langsung dari RAM/FTS5.
 - **Kompilasi On-Demand (<1 ms per lagu)**:
   - File biner ProPresenter (`.pro`) dikompilasi secara *in-memory* hanya saat operator mengklik **INJECT**.
   - ProPresenter tetap bersih, ringan, dan **bebas lag/crash** (hanya menyimpan lagu-lagu ibadah aktif di disk).
