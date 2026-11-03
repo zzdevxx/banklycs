@@ -10,9 +10,13 @@ echo Memeriksa server aplikasi lokal...
 :: Cek apakah server sudah berjalan di port 5050
 netstat -ano | findstr :5050 >nul 2>&1
 if %errorlevel% neq 0 (
-    echo Menjalankan server aplikasi di latar belakang...
-    start /B python app\server.py 5050
-    timeout /t 2 /nobreak >nul
+    where pythonw >nul 2>&1
+    if %errorlevel% equ 0 (
+        start "" pythonw app\server.py 5050
+    ) else (
+        start /B python app\server.py 5050
+    )
+    timeout /t 1 /nobreak >nul
 )
 
 echo Membuka antarmuka Banklycs...

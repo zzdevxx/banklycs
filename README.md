@@ -42,8 +42,10 @@
 ### Cara Menjalankan Aplikasi
 Cukup **double-click** file:
 ```
-START.bat
+START.vbs   (Rekomendasi untuk Operator — 100% senyap tanpa jendela terminal hitam)
 ```
+*(Atau gunakan `START.bat` jika ingin menjalankan melalui terminal).*
+
 1. Aplikasi **Studio Console** akan langsung terbuka di layar laptop Anda.
 2. Ketik judul lagu / artis / nomor buku (misal `KJ 392`, `BE 210`, atau `Darah-Mu Yesus`).
 3. Klik tombol `+ TAMBAH KE RUNDOWN` untuk menyusun lagu ibadah minggu ini.
@@ -84,7 +86,8 @@ banklycs/
 │   ├── GUIDE.md             ← Panduan pengguna, kontribusi gereja, & web scraping
 │   └── AGENT.md             ← Konteks wajib untuk AI coding agent & status estafet
 │
-├── 🚀 START.bat             ← SATU-SATUNYA file yang perlu diklik oleh user awam!
+├── 🚀 START.vbs             ← Launcher 1-klik senyap untuk operator (tanpa jendela CMD)
+├── ⚙️ START.bat             ← Launcher via command prompt
 └── 📄 README.md             ← Panduan pemakaian ini
 ```
 
