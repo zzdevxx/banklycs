@@ -22,11 +22,11 @@ Semua gereja, persekutuan, dan relawan multimedia dipersilakan untuk berkontribu
 
 ### A. Prinsip Kontribusi
 - **DILARANG MENGGUNAKAN AI/LLM** untuk mengarang lirik lagu. Seluruh lirik harus berasal dari sumber otentik (buku nyanyian, rekaman ibadah resmi, atau situs lirik tepercaya).
-- Seluruh kontribusi lagu hanya ditambahkan ke folder [`database/txt/`](../database/txt/) dalam bentuk file `.txt` murni. Jangan menyunting atau mengirim file `.pro` secara manual melalui Pull Request.
+- Seluruh kontribusi lagu hanya ditambahkan ke `database/banklycs.db` (tabel `songs` + FTS5). Jangan mengirim file `.pro` manual melalui Pull Request; `.pro` dikompilasi on-demand setiap kali operator mengklik **INJECT**.
 
 ### B. Langkah Menambah Lagu
-1. Buat file baru di dalam `database/txt/` dengan nama: `Judul Lagu - Nama Artis.txt` (atau `Judul Lagu.txt` jika artis tidak diketahui).
-2. Isi file dengan format standar panggung:
+1. Tambahkan baris ke `database/banklycs.db` (tabel `songs` + FTS5) dengan `filename` = `Judul Lagu - Nama Artis.txt` (atau `Judul Lagu.txt` jika artis tidak diketahui). Lihat struktur tabel di [`AGENT.md` §2.B](AGENT.md).
+2. Isi `content` dengan format standar panggung:
    ```text
    BLANK
    Judul Lagu - Nama Artis
@@ -49,7 +49,7 @@ Semua gereja, persekutuan, dan relawan multimedia dipersilakan untuk berkontribu
 Jika Anda adalah developer yang ingin menjalankan scraper atau mengimpor data massal:
 
 ### A. Etika & Pencegahan Duplikasi
-- **Pengecekan Rekursif**: Skrip scraper wajib memeriksa judul lagu yang sudah ada di `database/txt/` sebelum mengunduh untuk mencegah duplikasi.
+- **Pengecekan Rekursif**: Skrip scraper wajib memeriksa `filename`/`title` yang sudah ada di `database/banklycs.db` sebelum mengunduh untuk mencegah duplikasi.
 - **Sanitisasi Karakter**: Konversi kutip miring (`’`, `‘`, `“`, `”`) menjadi petik ASCII (`'`, `"`). Bersihkan mojibake UTF-8 dan tag HTML.
 - **Artis Anonim**: Jika nama artis tidak ditemukan pada halaman sumber, gunakan nama file berupa judul lagu saja. Jangan menggunakan label `- No Name` atau `- Praise & Worship`.
 

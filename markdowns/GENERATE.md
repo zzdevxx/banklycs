@@ -57,7 +57,7 @@ Sebelumnya, repositori menyimpan 20.301 file `.txt` dan 20.301 file `.pro` (tota
 
 **Dengan Arsitektur Baru**:
 1. **Single Database File (`banklycs.db`)**: Seluruh 20.301 lagu hanya berukuran **~28.9 MB**.
-2. **Transfer Instan**: Meng-copy 1 file 28 MB ke flashdisk hanya butuh 1–2 detik.
+2. 25.904-sebelumnya → kini **24.556 lagu** setelah dedup 2026-11-04 (1.348 duplikat `(2)/(3)` dan `(KJ n)` yang liriknya lebih pendek dihapus).
 3. **Kompilasi Realtime**: Protobuf serializer C# sangat cepat (<1 ms per lagu). Mengompilasi 5–10 lagu saat klik tombol "INJECT" hanya butuh waktu ~5 ms, sehingga tidak perlu menyimpan file `.pro` yang tidak terpakai di harddisk.
 4. **ProPresenter Tetap Ringan**: ProPresenter hanya memuat lagu-lagu ibadah aktif di `Libraries/Banks/`.
 

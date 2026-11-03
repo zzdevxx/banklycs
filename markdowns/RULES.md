@@ -1,10 +1,10 @@
 # RULES — DOKTRIN & STANDAR LIRIK MASTER
 
 > **Proyek**: `banklycs` — Bank Lirik & Injektor Cepat ProPresenter 7  
-> **Master Database**: `database/banklycs.db` — **25.904 lagu master terkurasi (SQLite FTS5)**  
+> **Master Database**: `database/banklycs.db` — **24.556 lagu master terkurasi (SQLite FTS5)**  
 > **Presentation Cache**: On-demand in-memory compilation (<1 ms per lagu)  
 > **Studio Console GUI**: `app/` + `engine/banklycs.exe` (1-klik via `START.vbs`)  
-> **Terakhir diperbarui**: 2026-11-03
+> **Terakhir diperbarui**: 2026-11-04
 
 ---
 
@@ -12,7 +12,7 @@
 
 1. **Operator Sentris**: Operator proyektor gereja **tidak boleh lagi** mencari & *copy-paste* lirik terburu-buru dari Google/browser saat kebaktian berlangsung. Cukup buka `START.vbs`, ketik judul/nomor buku, lagu ketemu dalam <2 milidetik, lalu klik `INJECT KE PROPRESENTER`.
 2. **ProPresenter Selalu Ringan (<1 detik startup)**: Memasukkan 20.000 file sekaligus ke dalam ProPresenter terbukti menyebabkan *deadlock* thread UI dan tabrakan indeks Lucene. Banklycs menyimpan 20.000 lagu di vault lokal, dan **hanya menyuntikkan (inject) 5–10 lagu rundown aktif** ke ProPresenter.
-3. **Penyimpanan Sederhana (Single Source of Truth)**: Folder `database/txt/` berisi file `.txt` murni berformat standar yang dapat dibaca manusia (*human-readable*), ramah Notepad, dan mudah dilacak perubahannya di Git. File `.pro` di `database/pro/` hanyalah artefak kompilasi mesin.
+3. **Penyimpanan Sederhana (Single Source of Truth)**: Semua lirik tersimpan di satu file SQLite `database/banklycs.db` (tabel `songs` + FTS5). Folder `database/txt/` dan `database/pro/` **tidak lagi digunakan** dan tidak boleh dibuat: file `.pro` dikompilasi on-demand setiap kali operator mengklik **INJECT**. Ekspor ke `.txt` hanya untuk inspeksi batch via `engine\banklycs.exe export-txt`.
 
 ---
 
@@ -33,8 +33,9 @@
    *(Contoh: `Ku Berbahagia - KJ 392.txt`, `Ro Ma Ho Tu Jesus - BE 179.txt`)*
 6. **Title Case**: Judul lagu wajib menggunakan Title Case (contoh: `Kumenang.txt` ✔ / `KUMENANG.txt` ✘).
    - Kata hubung dan preposisi kecil bahasa Indonesia (*dan, di, ke, dari, untuk, yang, pada, demi*) tetap huruf kecil kecuali berada di awal judul.
-7. **Kesesuaian Baris Kedua**: Baris kedua dalam isi file **wajib identik persis** dengan nama file tanpa ekstensi `.txt`.
-8. **Keunikan Global Datar**: Seluruh nama file dalam `database/txt/` harus unik secara global karena disimpan dalam satu folder datar tanpa subfolder.
+7. **Kesesuaian Baris Kedua**: Baris kedua dalam isi lirik (**`content`) **wajib identik persis** dengan nama file tanpa ekstensi `.txt`.
+8. **Keunikan Global**: Kolom `filename` di `database/banklycs.db` bersifat UNIQUE. Dilarang membuat nama ber-sufiks `(2)/(3)` hanya untuk menampung judul duplikat: bedakan dengan informasi sah (artis, nomor buku, atau judul tambahan) atau hapus duplikat yang liriknya lebih pendek.
+9. **Split Judul & Artis (Asal-usul artefak)**: `title` dan `artist` adalah **hasil split** dari nama file pada tanda `" - "` pertama, sehingga judul yang mengandung tanda hubung (`Bagi - Mu`, `Kim Walker - Smith`) mudah terpecah salah. **Sumber kebenaran adalah baris kedua lirik**: bila `title`/`artist` tidak cocok dengan baris kedua, pecah ulang dari baris kedua (split pada `" - "` **terakhir**), bukan dari nama file.
 
 ---
 
