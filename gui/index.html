@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProPresenter LyricBanks — Rundown & Playlist Builder</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="top-bar">
+    <div class="brand-section">
+      <div class="brand-badge">PRO7</div>
+      <div class="brand-info">
+        <h1 class="brand-title">PROPRESENTER LYRICBANKS</h1>
+        <span class="brand-subtitle">MASTER WORSHIP VAULT & PLAYLIST INJECTOR</span>
+      </div>
+    </div>
+    <div class="system-status" id="system-status">
+      <span class="status-indicator"></span>
+      <span id="status-text">Memuat katalog lagu...</span>
+    </div>
+  </header>
+
+  <!-- Main 3-Column Studio Console Layout -->
+  <main class="console-layout">
+    
+    <!-- LEFT PANEL: Master Database & Search -->
+    <section class="panel panel-left" aria-label="Katalog Lagu Master">
+      <div class="panel-header">
+        <h2 class="panel-title">KATALOG MASTER</h2>
+        <span class="count-badge" id="results-count">0 LAGU</span>
+      </div>
+
+      <!-- Search Input Box -->
+      <div class="search-container">
+        <input 
+          type="text" 
+          id="search-input" 
+          class="search-input" 
+          placeholder="Ketik judul, artis, nomor (KJ, BE, NKB)..."
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button id="clear-search-btn" class="clear-btn" title="Hapus pencarian">BATAL</button>
+      </div>
+
+      <!-- Quick Category Filter Bar -->
+      <div class="category-filter-bar" role="tablist">
+        <button class="filter-chip active" data-category="ALL">SEMUA</button>
+        <button class="filter-chip" data-category="ID">INDONESIA</button>
+        <button class="filter-chip" data-category="EN">ENGLISH</button>
+        <button class="filter-chip" data-category="KJ">KJ</button>
+        <button class="filter-chip" data-category="PKJ">PKJ</button>
+        <button class="filter-chip" data-category="NKB">NKB</button>
+        <button class="filter-chip" data-category="KK">KK</button>
+        <button class="filter-chip" data-category="BE">BE</button>
+        <button class="filter-chip" data-category="KLIK">KLIK</button>
+      </div>
+
+      <!-- Songs List Container -->
+      <div class="song-list-scroll" id="song-list" role="listbox">
+        <!-- Rendered by app.js -->
+      </div>
+    </section>
+
+    <!-- MIDDLE PANEL: Live Slide & Lyric Inspector -->
+    <section class="panel panel-middle" aria-label="Inspeksi Lirik Slide">
+      <div class="panel-header">
+        <div class="inspector-meta">
+          <span class="inspector-label">INSPEKTOR LIRIK</span>
+          <h2 class="inspector-title" id="inspector-song-title">Pilih lagu untuk melihat slide</h2>
+        </div>
+        <button id="add-to-rundown-btn" class="btn btn-primary" disabled>
+          + TAMBAH KE RUNDOWN
+        </button>
+      </div>
+
+      <div class="inspector-content" id="inspector-content">
+        <div class="empty-placeholder">
+          <p class="placeholder-text">Klik salah satu lagu di daftar kiri untuk meninjau lirik dan struktur slide.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: Sunday Service Rundown & Injector -->
+    <section class="panel panel-right" aria-label="Penyusun Playlist Ibadah">
+      <div class="panel-header">
+        <h2 class="panel-title">RUNDOWN PLAYLIST</h2>
+        <span class="count-badge" id="rundown-count">0 LAGU</span>
+      </div>
+
+      <!-- Playlist Setup Box -->
+      <div class="playlist-config-box">
+        <label for="playlist-name-input" class="field-label">NAMA PLAYLIST PROPRESENTER:</label>
+        <input 
+          type="text" 
+          id="playlist-name-input" 
+          class="text-input" 
+          placeholder="Contoh: Ibadah Raya 8 Nov 2026"
+        >
+      </div>
+
+      <!-- Rundown Song Items -->
+      <div class="rundown-list-scroll" id="rundown-list">
+        <!-- Rendered by app.js -->
+      </div>
+
+      <!-- Footer Action Area -->
+      <div class="rundown-actions">
+        <button id="clear-rundown-btn" class="btn btn-secondary">
+          KOSONGKAN
+        </button>
+        <button id="inject-btn" class="btn btn-inject" disabled>
+          INJECT KE PROPRESENTER
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Notification Dialog / Modal -->
+  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-title" class="modal-title">Pemberitahuan</h3>
+        <button id="modal-close-btn" class="modal-close" aria-label="Tutup">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Content -->
+      </div>
+      <div class="modal-footer">
+        <button id="modal-ok-btn" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Status Bar -->
+  <footer class="bottom-bar">
+    <div class="bar-left">
+      <span>SERVER: LOCAL 127.0.0.1:5050</span>
+      <span class="divider">|</span>
+      <span id="bar-workspace">WORKSPACE: propresenter-lyricbanks</span>
+    </div>
+    <div class="bar-right">
+      <span>SHORTCUT: [ / ] FOKUS CARI &nbsp;|&nbsp; [ ESC ] BATAL</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
