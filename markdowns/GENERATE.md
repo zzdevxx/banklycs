@@ -1,9 +1,9 @@
 # GENERATE — KOMPILER ENGINE & INJEKTOR PROPRESENTER
 
 > **Proyek**: `banklycs` — Arsitektur Kompilasi & Injeksi Cepat ProPresenter 7  
-> **Binary Utama**: `banklycs.exe` (Single-file Native C# .NET 8, Google Protobuf)  
+> **Binary Utama**: `engine/banklycs.exe` (Single-file Native C# .NET 8, Google Protobuf)  
 > **Script Batch**: `engine/Generate.ps1`  
-> **Cache Binary**: `engine/PRO/`  
+> **Cache Binary**: `database/pro/`  
 > **Terakhir diperbarui**: 2026-11-03
 
 ---
@@ -12,13 +12,13 @@
 
 ```
 ┌─────────────────────────┐          ┌─────────────────────────┐
-│ database/ (20.301 .txt) │          │ engine/PRO/ (20.301.pro)│
+│ database/txt/ (.txt)    │          │ database/pro/ (.pro)    │
 │ Single Source of Truth  │          │ Vault Binary Protobuf   │
 └────────────┬────────────┘          └────────────┬────────────┘
              │                                    │
              ▼                                    ▼
 ┌──────────────────────────────────────────────────────────────┐
-│            banklycs.exe (Studio Console Native C#)           │
+│        engine/banklycs.exe (Studio Console Native C#)        │
 │ - In-Memory RAM Search Catalog (Load: 113ms, Cari: <2ms)     │
 │ - Rundown Builder (Pilih 5–10 lagu ibadah)                   │
 └──────────────────────────────┬───────────────────────────────┘
@@ -68,7 +68,7 @@ Pemindaian puluhan ribu lagu di latar belakang memicu thread pekerja memperbarui
 ## 3. Solusi Banklycs: On-Demand Realtime Injection
 
 Banklycs memecahkan masalah ini dengan memisahkan penyimpanan masif dari eksekusi:
-1. **20.000 Lagu Tersimpan di Vault Lokal**: Seluruh database teks tersimpan di `database/` dan seluruh cache binary di `engine/PRO/`. ProPresenter sama sekali tidak dibebani oleh berkas-berkas ini saat startup.
+1. **20.000 Lagu Tersimpan di Vault Lokal**: Seluruh database teks tersimpan di `database/txt/` dan seluruh cache binary di `database/pro/`. ProPresenter sama sekali tidak dibebani oleh berkas-berkas ini saat startup.
 2. **Pencarian Kilat di RAM (<2 ms)**: Native engine `banklycs.exe` membaca seluruh katalog ke memori hanya dalam 113 milidetik saat aplikasi dijalankan, memungkinkan pencarian seketika tanpa I/O disk.
 3. **Penyuntikan Terarah In-Memory (Zero Subprocess, <3 ms)**:
    - Saat operator menyusun rundown (5–10 lagu) dan menekan tombol injeksi, hanya file `.pro` lagu tersebut yang disalin ke `Libraries/Banks/`.

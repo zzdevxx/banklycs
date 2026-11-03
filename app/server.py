@@ -11,9 +11,9 @@ from urllib.parse import urlparse, parse_qs
 # Set root paths
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(APP_DIR, ".."))
-DATABASE_DIR = os.path.join(PROJECT_ROOT, "database")
-PRO_DIR = os.path.join(PROJECT_ROOT, "engine", "PRO")
-ENGINE_EXE = os.path.join(PROJECT_ROOT, "engine", "ProEngine.exe")
+DATABASE_DIR = os.path.join(PROJECT_ROOT, "database", "txt") if os.path.isdir(os.path.join(PROJECT_ROOT, "database", "txt")) else os.path.join(PROJECT_ROOT, "database")
+PRO_DIR = os.path.join(PROJECT_ROOT, "database", "pro") if os.path.isdir(os.path.join(PROJECT_ROOT, "database", "pro")) else os.path.join(PROJECT_ROOT, "engine", "PRO")
+ENGINE_EXE = os.path.join(PROJECT_ROOT, "engine", "banklycs.exe")
 
 # Resolve ProPresenter directory
 def get_propresenter_dir():

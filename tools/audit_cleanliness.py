@@ -16,13 +16,21 @@ PPR_DIR = get_ppr_dir()
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-TXT_DIR = os.path.join(BASE_DIR, "database")
+TXT_DIR = os.path.join(BASE_DIR, "database", "txt")
+if not os.path.isdir(TXT_DIR):
+    TXT_DIR = os.path.join(BASE_DIR, "database")
+if not os.path.isdir(TXT_DIR):
+    TXT_DIR = os.path.join(BASE_DIR, "database", "txt")
 if not os.path.isdir(TXT_DIR):
     TXT_DIR = os.path.join(BASE_DIR, "database")
 if not os.path.isdir(TXT_DIR):
     TXT_DIR = os.path.join(BASE_DIR, "TXT")
 
-PRO_DIR = os.path.join(BASE_DIR, "engine", "PRO")
+PRO_DIR = os.path.join(BASE_DIR, "database", "pro")
+if not os.path.isdir(PRO_DIR):
+    PRO_DIR = os.path.join(BASE_DIR, "engine", "PRO")
+if not os.path.isdir(PRO_DIR):
+    PRO_DIR = os.path.join(BASE_DIR, "database", "pro")
 if not os.path.isdir(PRO_DIR):
     PRO_DIR = os.path.join(BASE_DIR, "engine", "PRO")
 if not os.path.isdir(PRO_DIR):

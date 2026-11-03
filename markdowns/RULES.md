@@ -1,18 +1,18 @@
 # RULES — DOKTRIN & STANDAR LIRIK MASTER
 
 > **Proyek**: `banklycs` — Bank Lirik & Injektor Cepat ProPresenter 7  
-> **Master Database**: `database/` — **20.301 lagu, SATU folder datar murni, TANPA subfolder**  
-> **Engine & Cache**: `engine/PRO/` (file binary Protobuf ProPresenter 7)  
-> **Studio Console GUI**: `app/` (Server lokal Python + UI antarmuka web, `START.bat`)  
+> **Master Database**: `database/txt/` — **20.301 lagu master .txt datar**  
+> **Presentation Cache**: `database/pro/` (file binary Protobuf ProPresenter 7)  
+> **Studio Console GUI**: `app/` + `engine/banklycs.exe` (1-klik via `START.vbs`)  
 > **Terakhir diperbarui**: 2026-11-03
 
 ---
 
 ## 1. Filosofi & Visi Sistem
 
-1. **Operator Sentris**: Operator proyektor gereja **tidak boleh lagi** mencari & *copy-paste* lirik terburu-buru dari Google/browser saat kebaktian berlangsung. Cukup buka `START.bat`, ketik judul/nomor buku, lagu ketemu dalam <2 milidetik, lalu klik `INJECT KE PROPRESENTER`.
+1. **Operator Sentris**: Operator proyektor gereja **tidak boleh lagi** mencari & *copy-paste* lirik terburu-buru dari Google/browser saat kebaktian berlangsung. Cukup buka `START.vbs`, ketik judul/nomor buku, lagu ketemu dalam <2 milidetik, lalu klik `INJECT KE PROPRESENTER`.
 2. **ProPresenter Selalu Ringan (<1 detik startup)**: Memasukkan 20.000 file sekaligus ke dalam ProPresenter terbukti menyebabkan *deadlock* thread UI dan tabrakan indeks Lucene. Banklycs menyimpan 20.000 lagu di vault lokal, dan **hanya menyuntikkan (inject) 5–10 lagu rundown aktif** ke ProPresenter.
-3. **Penyimpanan Sederhana (Single Source of Truth)**: Folder `database/` berisi file `.txt` murni berformat standar yang dapat dibaca manusia (*human-readable*), ramah Notepad, dan mudah dilacak perubahannya di Git. File `.pro` di `engine/PRO/` hanyalah artefak kompilasi mesin.
+3. **Penyimpanan Sederhana (Single Source of Truth)**: Folder `database/txt/` berisi file `.txt` murni berformat standar yang dapat dibaca manusia (*human-readable*), ramah Notepad, dan mudah dilacak perubahannya di Git. File `.pro` di `database/pro/` hanyalah artefak kompilasi mesin.
 
 ---
 
@@ -34,7 +34,7 @@
 6. **Title Case**: Judul lagu wajib menggunakan Title Case (contoh: `Kumenang.txt` ✔ / `KUMENANG.txt` ✘).
    - Kata hubung dan preposisi kecil bahasa Indonesia (*dan, di, ke, dari, untuk, yang, pada, demi*) tetap huruf kecil kecuali berada di awal judul.
 7. **Kesesuaian Baris Kedua**: Baris kedua dalam isi file **wajib identik persis** dengan nama file tanpa ekstensi `.txt`.
-8. **Keunikan Global Datar**: Seluruh nama file dalam `database/` harus unik secara global karena disimpan dalam satu folder datar tanpa subfolder.
+8. **Keunikan Global Datar**: Seluruh nama file dalam `database/txt/` harus unik secara global karena disimpan dalam satu folder datar tanpa subfolder.
 
 ---
 

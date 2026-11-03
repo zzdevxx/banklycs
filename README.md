@@ -40,13 +40,13 @@
 - **NOL INSTALASI / DEPENDENSI TAMBAHAN**: **Tidak memerlukan Python sama sekali.** (Karena ProPresenter 7 adalah aplikasi .NET WPF, seluruh komputer yang menjalankan ProPresenter 7 sudah memiliki runtime .NET bawaan Windows).
 
 ### Cara Menjalankan Aplikasi
-Cukup **double-click** salah satu:
-1. **`START.vbs`** (Sangat Direkomendasikan untuk Operator — 100% senyap tanpa jendela terminal hitam).
-2. **`banklycs.exe`** (Langsung menjalankan aplikasi native engine & server).
-3. **`START.bat`** (Jika ingin melihat log konsol saat startup).
+Cukup **double-click** file:
+```
+START.vbs   (1-Klik Senyap untuk Operator — 100% tanpa jendela terminal hitam)
+```
 
 1. Aplikasi **Studio Console** akan langsung terbuka di layar laptop Anda.
-2. Ketik judul lagu / artis / nomor buku (misal `KJ 392`, `BE 210`, atau `Darah-Mu Yesus`).
+2. Ketik judul lagu / artis / nomor buku (misal `KJ 392`, `BE 210`, atau `Kuasa DarahMu`).
 3. Klik tombol `+ TAMBAH KE RUNDOWN` untuk menyusun lagu ibadah minggu ini.
 4. Klik tombol **`INJECT KE PROPRESENTER`**.
 5. Buka ProPresenter 7 — Playlist ibadah langsung tersedia dan ProPresenter terbuka dalam **1 detik tanpa lag maupun crash!**
@@ -58,37 +58,34 @@ Cukup **double-click** salah satu:
 ```text
 banklycs/
 │
-├── 🚀 banklycs.exe          ← Binary Native C# Utama (Server, Search RAM, & Direct Injector)
-├── 🚀 START.vbs             ← Launcher 1-klik senyap untuk operator gereja (0 jendela CMD)
-├── ⚙️ START.bat             ← Launcher via Command Prompt (menampilkan log)
+├── 🚀 START.vbs             ← SATU-SATUNYA launcher 1-klik untuk operator gereja (senyap, 0 CMD)
 │
-├── 📂 database/             ← SATU-SATUNYA tempat lirik master (.txt ramah Notepad & Git)
-│   ├── Darah-Mu Yesus - JPCC Worship.txt
-│   ├── KJ 392 - 'Ku Berbahagia.txt
-│   └── ... (20.301 lagu master)
+├── 📂 database/             ← Database Lirik & Cache Presentasi
+│   ├── 📂 txt/              ← 20.301 file master lirik (.txt ramah Notepad & Git)
+│   └── 📂 pro/              ← 20.301 file cache binary (.pro terisolasi)
 │
 ├── 📂 app/                  ← Antarmuka Web GUI Studio Console (HTML, CSS, JS)
 │   ├── index.html
 │   ├── style.css
 │   └── app.js
 │
-├── 📂 engine/               ← Kode Sumber & Compiler C# .NET 8 (ProEngine)
-│   ├── Src/
-│   │   ├── StudioServer.cs  ← Native async HTTP server & in-memory direct injection
-│   │   ├── Program.cs       ← CLI routing & Protobuf serialization engine
-│   │   └── ProEngine.csproj
-│   └── PRO/                 ← Cache file presentasi binary (.pro) terisolasi
-│
-├── 📂 tools/                ← Skrip scraper & audit (khusus developer/kontributor)
-│   ├── scrape_psalmnote.py
-│   ├── scrape_buku_ende.py
-│   └── ...
+├── 📂 engine/               ← Engine C# .NET 8 (Server, Protobuf Serializer, & Injector)
+│   ├── banklycs.exe         ← Binary native mandiri (dijalankan otomatis oleh START.vbs)
+│   ├── Program.cs           ← Serializer Google Protobuf & direct in-memory injector
+│   ├── StudioServer.cs      ← High-performance async server & RAM catalog (<2ms search)
+│   ├── ProEngine.csproj     ← Konfigurasi project .NET 8
+│   └── Generate.ps1         ← Batch compiler cache .pro
 │
 ├── 📂 markdowns/            ← Dokumentasi arsitektur, doktrin lirik, & panduan kontribusi
 │   ├── RULES.md             ← Aturan wajib format lirik & penamaan
 │   ├── GENERATE.md          ← Arsitektur engine kompilasi & injeksi ProPresenter
 │   ├── GUIDE.md             ← Panduan pengguna, kontribusi gereja, & web scraping
 │   └── AGENT.md             ← Konteks wajib untuk AI coding agent & status estafet
+│
+├── 📂 tools/                ← Skrip scraper & audit (khusus developer/kontributor)
+│   ├── audit_cleanliness.py
+│   ├── scrape_psalmnote.py
+│   └── ...
 │
 └── 📄 README.md             ← Panduan pemakaian ini
 ```
@@ -97,7 +94,7 @@ banklycs/
 
 ## ✍️ Cara Menambah Lagu Baru
 
-Cukup buat file teks baru di dalam folder [`database/`](database/):
+Cukup buat file teks baru di dalam folder [`database/txt/`](database/txt/):
 1. Format nama file: `Judul Lagu - Artis.txt` (atau `Judul Lagu.txt` jika artis tidak diketahui).
 2. Format isi file:
    ```text

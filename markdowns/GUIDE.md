@@ -7,9 +7,9 @@
 
 ## 1. Panduan Cepat untuk Operator Gereja
 
-1. Cukup double-click file **`START.bat`** di folder root `banklycs`.
+1. Cukup double-click file **`START.vbs`** di folder root `banklycs` (senyap tanpa jendela terminal).
 2. Jendela **Studio Console** akan terbuka di layar laptop.
-3. Ketik judul lagu, artis, atau nomor buku himne pada bilah pencarian (contoh: `KJ 392`, `BE 210`, atau `Darah-Mu Yesus`). Hasil pencarian muncul seketika (<2 ms).
+3. Ketik judul lagu, artis, atau nomor buku himne pada bilah pencarian (contoh: `KJ 392`, `BE 210`, atau `Kuasa DarahMu`). Hasil pencarian muncul seketika (<2 ms).
 4. Klik tombol **`+ TAMBAH KE RUNDOWN`** untuk memasukkan lagu ke daftar ibadah minggu ini.
 5. Klik tombol **`INJECT KE PROPRESENTER`**.
 6. Buka ProPresenter 7 — Playlist ibadah langsung tersedia di sidebar dan siap ditayangkan.
@@ -22,10 +22,10 @@ Semua gereja, persekutuan, dan relawan multimedia dipersilakan untuk berkontribu
 
 ### A. Prinsip Kontribusi
 - **DILARANG MENGGUNAKAN AI/LLM** untuk mengarang lirik lagu. Seluruh lirik harus berasal dari sumber otentik (buku nyanyian, rekaman ibadah resmi, atau situs lirik tepercaya).
-- Seluruh kontribusi lagu hanya ditambahkan ke folder [`database/`](../database/) dalam bentuk file `.txt` murni. Jangan menyunting atau mengirim file `.pro` secara manual melalui Pull Request.
+- Seluruh kontribusi lagu hanya ditambahkan ke folder [`database/txt/`](../database/txt/) dalam bentuk file `.txt` murni. Jangan menyunting atau mengirim file `.pro` secara manual melalui Pull Request.
 
 ### B. Langkah Menambah Lagu
-1. Buat file baru di dalam `database/` dengan nama: `Judul Lagu - Nama Artis.txt` (atau `Judul Lagu.txt` jika artis tidak diketahui).
+1. Buat file baru di dalam `database/txt/` dengan nama: `Judul Lagu - Nama Artis.txt` (atau `Judul Lagu.txt` jika artis tidak diketahui).
 2. Isi file dengan format standar panggung:
    ```text
    BLANK
@@ -49,7 +49,7 @@ Semua gereja, persekutuan, dan relawan multimedia dipersilakan untuk berkontribu
 Jika Anda adalah developer yang ingin menjalankan scraper atau mengimpor data massal:
 
 ### A. Etika & Pencegahan Duplikasi
-- **Pengecekan Rekursif**: Skrip scraper wajib memeriksa judul lagu yang sudah ada di `database/` sebelum mengunduh untuk mencegah duplikasi.
+- **Pengecekan Rekursif**: Skrip scraper wajib memeriksa judul lagu yang sudah ada di `database/txt/` sebelum mengunduh untuk mencegah duplikasi.
 - **Sanitisasi Karakter**: Konversi kutip miring (`’`, `‘`, `“`, `”`) menjadi petik ASCII (`'`, `"`). Bersihkan mojibake UTF-8 dan tag HTML.
 - **Artis Anonim**: Jika nama artis tidak ditemukan pada halaman sumber, gunakan nama file berupa judul lagu saja. Jangan menggunakan label `- No Name` atau `- Praise & Worship`.
 

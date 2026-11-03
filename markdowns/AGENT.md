@@ -9,14 +9,14 @@
 
 ```text
 banklycs/
-├── banklycs.exe       ← Single-file native C# .NET 8 binary (Server, RAM search, & direct injector)
-├── database/          ← Master database lirik (.txt murni, flat, 20.301 lagu, Single Source of Truth)
+├── START.vbs          ← Launcher senyap 1-klik bagi operator gereja (0 CMD window)
+├── database/          ← Database Lirik & Cache Presentasi
+│   ├── txt/           ← 20.301 file master lirik (.txt murni, flat, Single Source of Truth)
+│   └── pro/           ← 20.301 file cache binary (.pro terisolasi)
 ├── app/               ← Antarmuka Web GUI Studio Console (index.html, style.css, app.js)
-├── engine/            ← Compiler C# .NET 8 (Src/StudioServer.cs, Src/Program.cs) & cache (engine/PRO/*.pro)
+├── engine/            ← Engine C# .NET 8 (banklycs.exe, StudioServer.cs, Program.cs)
 ├── tools/             ← Skrip scraper web & data pipeline (Python)
 ├── markdowns/         ← Dokumentasi inti: RULES.md, GENERATE.md, GUIDE.md, AGENT.md
-├── START.vbs          ← Launcher senyap 1-klik bagi operator gereja (0 CMD window)
-├── START.bat          ← Launcher via command prompt
 ├── README.md          ← Dokumentasi publik bagi pengguna
 └── .gitignore         ← Aturan ignore Git
 ```
@@ -41,10 +41,10 @@ banklycs/
    - Header bagian uppercase: `VERSE`, `CHORUS`, `PRE-CHORUS`, `BRIDGE`, `INTRO`, `OUTRO`, `ENDING`, `TAG`, `INTERLUDE`.
 
 ### C. Alur Kerja Injektor ProPresenter
-1. Master database 20.301 lagu berada di `database/`.
-2. Cache file binary ProPresenter 7 (`.pro`) berada di `engine/PRO/`.
+1. Master database 20.301 lagu berada di `database/txt/`.
+2. Cache file binary ProPresenter 7 (`.pro`) berada di `database/pro/`.
 3. Folder library ProPresenter aktif (`Libraries/Banks`) **TIDAK BOLEH** diisi 20.000 file sekaligus (memicu crash indeks Lucene dan deadlock thread WPF ProPresenter).
-4. Injeksi playlist ibadah dilakukan on-demand in-memory melalui `banklycs.exe` (`Program.CreatePlaylistDirect`) tanpa subprocess.
+4. Injeksi playlist ibadah dilakukan on-demand in-memory melalui `engine/banklycs.exe` (`Program.CreatePlaylistDirect`) tanpa subprocess.
 
 ---
 
@@ -52,12 +52,11 @@ banklycs/
 
 ```powershell
 # 1. Menjalankan GUI lokal (Port 5050)
-.\banklycs.exe
-# Atau via launcher: .\START.vbs (senyap) atau .\START.bat
+.\START.vbs
+# Atau manual via binary: .\engine\banklycs.exe
 
 # 2. Build ulang binary native jika kode engine diubah
-dotnet publish engine/Src/ProEngine.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o .
-# Rename hasil publish ke banklycs.exe (jika perlu)
+dotnet publish engine/ProEngine.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o engine/
 
 # 3. Menjalankan audit menyeluruh kebersihan file & sync
 python tools/audit_cleanliness.py
@@ -79,10 +78,10 @@ python tools/enforce_flat_rules.py --apply
 
 | Metrik / Komponen | Status | Keterangan |
 |---|---|---|
-| **Master Database** | `database/` | **20.301** file `.txt`, flat murni (0 subfolder) |
-| **Engine Cache** | `engine/PRO/` | **20.301** file `.pro`, 100% sinkron 1-ke-1 |
+| **Master Database** | `database/txt/` | **20.301** file `.txt`, flat murni (0 subfolder) |
+| **Engine Cache** | `database/pro/` | **20.301** file `.pro`, 100% sinkron 1-ke-1 |
 | **Aplikasi GUI** | `app/` | Studio Console berjalan stabil (Dark Grey theme, font 18px) |
-| **Injeksi Real-Time** | Teruji & Berhasil | Injeksi on-demand berhasil tanpa membebani ProPresenter |
+| **Injeksi Real-Time** | Teruji & Berhasil | Injeksi in-memory langsung (<3 ms) tanpa subprocess |
 | **ProPresenter 7** | Berjalan Stabil | Startup instan (<1 detik), folder `Libraries/Banks` hanya berisi file aktif |
 | **Git Status** | Branch `master` | Bersih (*clean working tree*), remote GitLab & Codeberg terkonfigurasi |
 

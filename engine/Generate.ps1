@@ -14,9 +14,9 @@ Write-Host "====================================================================
 Write-Host "  PROPRESENTER 7 - MASTER BANKS GENERATOR & CLEANUP" -ForegroundColor Cyan
 Write-Host "==============================================================================" -ForegroundColor Cyan
 
-$engineDir   = Join-Path $PSScriptRoot "Engine"
-$engineExe   = Join-Path $engineDir "ProEngine.exe"
-$projectFile = Join-Path $engineDir "Src\ProEngine.csproj"
+$engineDir   = $PSScriptRoot
+$engineExe   = Join-Path $engineDir "banklycs.exe"
+$projectFile = Join-Path $engineDir "ProEngine.csproj"
 
 if ($RebuildEngine -or (-not (Test-Path $engineExe))) {
     Write-Host "`n[BUILD] Mengompilasi engine C# ProEngine..." -ForegroundColor Yellow

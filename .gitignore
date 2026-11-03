@@ -30,6 +30,8 @@ engine/last_errors.txt
 
 # Generated Presentations (Binary Protobuf)
 # File .pro dapat di-generate ulang kapan saja via engine
+database/pro/*.pro
+!database/pro/.gitkeep
 engine/PRO/*.pro
 !engine/PRO/.gitkeep
 PRO
