@@ -1,32 +1,32 @@
 # 🎶 Banklycs — ProPresenter 7 Worship Lyrics Engine & Database
 
-[![Catalog](https://img.shields.io/badge/Catalog-25%2C904%20Songs-blue?style=flat-square&logo=musicbrainz)](https://github.com/zzdevxx/banklycs)
+[![Catalog](https://img.shields.io/badge/Catalog-24%2C556%20Songs-blue?style=flat-square&logo=musicbrainz)](https://github.com/zzdevxx/banklycs)
 [![Database](https://img.shields.io/badge/Database-SQLite%20FTS5%20(44MB)-success?style=flat-square&logo=sqlite)](https://github.com/zzdevxx/banklycs)
 [![Target](https://img.shields.io/badge/Target-ProPresenter%207-orange?style=flat-square)](https://renewedvision.com/propresenter/)
 [![Engine](https://img.shields.io/badge/Engine-C%23%20.NET%208%20Native-purple?style=flat-square&logo=dotnet)](https://github.com/zzdevxx/banklycs)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
-> **Koleksi 25.904+ Lagu Rohani & Himne Siap Tayang untuk ProPresenter 7.**  
+> **Koleksi 24.556 Lagu Rohani & Himne Siap Tayang untuk ProPresenter 7.**  
 > Dirancang khusus untuk tim multimedia gereja, operator proyektor, dan worship leader agar **tidak perlu lagi mencari & *copy-paste* lirik dari browser saat ibadah.**
 
 ---
 
 ## ⚡ Fitur Utama
 
-- **25.904 Lagu Terkurasi & Siap Tayang (100% Zero-Duplicate)**:
-  - **Praise & Worship Indonesia (15.350+ lagu)**: GMS Live, JPCC Worship, Symphony Worship, NDC Worship, Bethel, Sari Simorangkir, Franky Sihombing, dll.
-  - **English Contemporary & Classic Hymns (6.370+ lagu)**: Hillsong Worship, Elevation Worship, Bethel Music, Planetshakers, Chris Tomlin, Matt Redman, Songs of Fellowship, Martin Luther, John Newton, dll.
+- **24.556 Lagu Terkurasi & Siap Tayang (100% Zero-Duplicate)**:
+  - **Praise & Worship Indonesia (14.586 lagu)**: GMS Live, JPCC Worship, Symphony Worship, NDC Worship, Bethel, Sari Simorangkir, Franky Sihombing, dll.
+  - **English Contemporary & Classic Hymns (5.961 lagu)**: Hillsong Worship, Elevation Worship, Bethel Music, Planetshakers, Chris Tomlin, Matt Redman, Songs of Fellowship, Martin Luther, John Newton, dll.
   - **Buku Nyanyian & Himne Gereja Lengkap**:
-    - **KJ** (Kidung Jemaat) — 1.296 lagu
+    - **KJ** (Kidung Jemaat) — 1.127 lagu
     - **BE** (Buku Ende HKBP Batak) — 844 lagu
-    - **KK** (Kidung Keesaan) — 766 lagu
-    - **KLIK** (Kumpulan Lagu Ibadah Kreatif) — 462 lagu
-    - **PKJ** (Pelengkap Kidung Jemaat) — 401 lagu
-    - **NKB** (Nyanyikanlah Kidung Baru) — 364 lagu
+    - **KK** (Kidung Keesaan) — 765 lagu
+    - **KLIK** (Kumpulan Lagu Ibadah Kreatif) — 461 lagu
+    - **PKJ** (Pelengkap Kidung Jemaat) — 399 lagu
+    - **NKB** (Nyanyikanlah Kidung Baru) — 363 lagu
     - **NNBT** (Nyanyian Baru Bagi Tuhan) — 46 lagu
     - **Kidung Pasamuwan Jawi** — 4 lagu
 - **Arsitektur Single-File Database (`database/banklycs.db`)**:
-  - Semua 25.904 lagu tersimpan dalam **1 file SQLite tunggal (~44 MB)** lengkap dengan indeks **FTS5 (Full-Text Search)**.
+  - Semua 24.556 lagu tersimpan dalam **1 file SQLite tunggal (~44 MB)** lengkap dengan indeks **FTS5 (Full-Text Search)**.
   - Tidak ada lagi puluhan ribu file kecil yang memperlambat Windows NTFS atau proses transfer flashdisk USB.
   - Pencarian lirik super cepat (<0.4 milidetik) langsung dari RAM/FTS5.
 - **Kompilasi On-Demand (<1 ms per lagu)**:
@@ -71,7 +71,7 @@ START.vbs   (1-Klik Senyap untuk Operator — 100% tanpa jendela terminal CMD)
 banklycs/
 ├── START.vbs              <- Launcher 1-klik untuk operator gereja (senyap, 0 CMD)
 ├── database/
-│   └── banklycs.db        <- Master SQLite DB seluruh 20.301 lagu (~30 MB, FTS5)
+│   └── banklycs.db        <- Master SQLite DB seluruh 24.556 lagu (~44 MB, FTS5)
 ├── app/                   <- Antarmuka Web GUI Studio Console (HTML, CSS, JS)
 │   ├── index.html
 │   ├── style.css
@@ -98,7 +98,7 @@ banklycs/
 
 ## 🛠️ Perintah untuk Developer / Maintainer
 
-Mengekspor seluruh 20.301 lagu kembali menjadi file teks biasa (`.txt`):
+Mengekspor seluruh 24.556 lagu kembali menjadi file teks biasa (`.txt`):
 ```powershell
 engine\banklycs.exe export-txt [folder_tujuan]
 # Contoh: engine\banklycs.exe export-txt database\txt

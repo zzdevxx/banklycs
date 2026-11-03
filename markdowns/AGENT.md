@@ -11,7 +11,7 @@
 banklycs/
 ├── START.vbs          ← Launcher senyap 1-klik bagi operator gereja (0 CMD window)
 ├── database/          ← Database Lirik Tunggal (SQLite + FTS5)
-│   └── banklycs.db    ← 25.904 lagu master dalam 1 file (~44 MB, zero disk bloat)
+│   └── banklycs.db    ← 24.556 lagu master dalam 1 file (~44 MB, zero disk bloat)
 ├── app/               ← Antarmuka Web GUI Studio Console (index.html, style.css, app.js)
 ├── engine/            ← Engine C# .NET 8 (Single-file banklycs.exe, StudioServer.cs, Program.cs)
 ├── tools/             ← Skrip scraper web, migrasi, & audit integritas (Python)
@@ -29,7 +29,7 @@ banklycs/
 - Jika artis/pencipta lagu tidak diketahui dari sumber: **gunakan nama lagu berupa judul saja** (contoh: `Adalah Baik Untuk`), **JANGAN** mengarang nama artis atau menggunakan label `- No Name` atau `- Praise & Worship`.
 
 ### B. Arsitektur Single-File Database (`database/banklycs.db`)
-1. **Penyimpanan**: Seluruh 25.904 lagu disimpan di tabel `songs` pada file SQLite tunggal `database/banklycs.db`.
+1. **Penyimpanan**: Seluruh 24.556 lagu disimpan di tabel `songs` pada file SQLite tunggal `database/banklycs.db`.
 2. **Schema Tabel `songs`**:
    - `id`: INTEGER PRIMARY KEY AUTOINCREMENT
    - `filename`: TEXT NOT NULL UNIQUE (contoh: `Amazing Grace - John Newton.txt`)
