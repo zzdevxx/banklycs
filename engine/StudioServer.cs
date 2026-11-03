@@ -47,6 +47,9 @@ namespace Banklycs
     public static class StudioServer
     {
         private static List<SongCatalogItem> Catalog = new List<SongCatalogItem>();
+        private static DateTime CatalogLoadedAt = DateTime.MinValue;
+        private static int CatalogVersion = 0;
+        private static readonly object CatalogLock = new object();
         private static string ProjectRoot = "";
         private static string DatabasePath = "";
         private static string DatabaseDir = "";
@@ -184,7 +187,12 @@ namespace Banklycs
                 items.Sort((a, b) => string.Compare(a.title, b.title, StringComparison.OrdinalIgnoreCase));
             }
 
-            Catalog = items;
+            lock (CatalogLock)
+            {
+                Catalog = items;
+                CatalogLoadedAt = DateTime.UtcNow;
+                CatalogVersion++;
+            }
             sw.Stop();
             Console.WriteLine($"[CATALOG] Sukses memuat {Catalog.Count:N0} lagu ke RAM dalam {sw.ElapsedMilliseconds} ms!");
         }
@@ -314,18 +322,42 @@ namespace Banklycs
                 {
                     if (rawPath.Equals("/api/status", StringComparison.OrdinalIgnoreCase))
                     {
+                        DateTime dbMtime = File.Exists(DatabasePath) ? File.GetLastWriteTimeUtc(DatabasePath) : DateTime.MinValue;
                         var statusData = new
                         {
                             total_songs = Catalog.Count,
+                            catalog_loaded_at = CatalogLoadedAt == DateTime.MinValue ? "" : CatalogLoadedAt.ToString("o"),
+                            catalog_db_mtime = dbMtime == DateTime.MinValue ? "" : dbMtime.ToString("o"),
+                            catalog_stale = dbMtime > CatalogLoadedAt,
+                            catalog_version = CatalogVersion,
                             propresenter_dir = ProPresenterDir,
-                            project_root = ProjectRoot
+                            project_root = ProjectRoot,
+                            db_path = DatabasePath
                         };
                         SendJson(req, res, statusData);
                         return;
                     }
 
+                    if (rawPath.Equals("/api/reload", StringComparison.OrdinalIgnoreCase))
+                    {
+                        LoadCatalog();
+                        var reloadData = new
+                        {
+                            total_songs = Catalog.Count,
+                            catalog_loaded_at = CatalogLoadedAt == DateTime.MinValue ? "" : CatalogLoadedAt.ToString("o"),
+                            catalog_version = CatalogVersion
+                        };
+                        SendJson(req, res, reloadData);
+                        return;
+                    }
+
                     if (rawPath.Equals("/api/songs", StringComparison.OrdinalIgnoreCase))
                     {
+                        List<SongCatalogItem> snapshot;
+                        lock (CatalogLock)
+                        {
+                            snapshot = Catalog;
+                        }
                         string q = (req.QueryString["q"] ?? "").Trim().ToLowerInvariant();
                         string cat = (req.QueryString["category"] ?? "ALL").Trim().ToUpperInvariant();
                         int limit = 100;
@@ -337,7 +369,7 @@ namespace Banklycs
                         string[] tokens = q.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                         List<SongCatalogItem> matched = new List<SongCatalogItem>(Math.Min(limit, 500));
 
-                        foreach (var item in Catalog)
+                        foreach (var item in snapshot)
                         {
                             if (cat != "ALL" && !item.category.Equals(cat, StringComparison.OrdinalIgnoreCase))
                             {
@@ -396,9 +428,8 @@ namespace Banklycs
                                 using var conn = new SqliteConnection(connStr);
                                 conn.Open();
                                 using var cmd = conn.CreateCommand();
-                                cmd.CommandText = "SELECT filename, title, content FROM songs WHERE filename = @f OR title = @f OR filename = @f_txt LIMIT 1;";
-                                cmd.Parameters.AddWithValue("@f", filename);
-                                cmd.Parameters.AddWithValue("@f_txt", filename.EndsWith(".txt", StringComparison.OrdinalIgnoreCase) ? filename : filename + ".txt");
+                                cmd.CommandText = "SELECT filename, title, content FROM songs WHERE filename = @f LIMIT 1;";
+                                cmd.Parameters.AddWithValue("@f", filename.EndsWith(".txt", StringComparison.OrdinalIgnoreCase) ? filename : filename + ".txt");
                                 using var reader = cmd.ExecuteReader();
                                 if (reader.Read())
                                 {
@@ -503,6 +534,12 @@ namespace Banklycs
                         using var reader = new StreamReader(req.InputStream, req.ContentEncoding);
                         string body = reader.ReadToEnd();
 
+                        if (body.Length > 1_000_000)
+                        {
+                            SendJson(req, res, new { error = "Body request terlalu besar" }, 413);
+                            return;
+                        }
+
                         InjectRequest? data = null;
                         try
                         {
@@ -525,8 +562,24 @@ namespace Banklycs
                             return;
                         }
 
-                        string libBanks = Path.Combine(ProPresenterDir, "Libraries", "Banks");
+                        string libBanks = Path.GetFullPath(Path.Combine(ProPresenterDir, "Libraries", "Banks"));
                         Directory.CreateDirectory(libBanks);
+
+                        // Reject path traversal from client-supplied song names up front.
+                        foreach (string raw in data.songs)
+                        {
+                            string probe = raw.Trim();
+                            if (probe.EndsWith(".pro", StringComparison.OrdinalIgnoreCase))
+                                probe = probe.Substring(0, probe.Length - 4);
+                            else if (probe.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+                                probe = probe.Substring(0, probe.Length - 4);
+                            string target = Path.GetFullPath(Path.Combine(libBanks, probe + ".pro"));
+                            if (!target.StartsWith(libBanks, StringComparison.OrdinalIgnoreCase))
+                            {
+                                SendJson(req, res, new { error = $"Nama lagu tidak valid: {raw}" }, 400);
+                                return;
+                            }
+                        }
 
                         int compiledCount = 0;
                         List<string> missingFiles = new List<string>();
@@ -574,9 +627,8 @@ namespace Banklycs
                                 if (dbConn != null)
                                 {
                                     using var cmd = dbConn.CreateCommand();
-                                    cmd.CommandText = "SELECT title, content FROM songs WHERE filename = @f OR title = @f OR filename = @f_txt LIMIT 1;";
-                                    cmd.Parameters.AddWithValue("@f", cleanName);
-                                    cmd.Parameters.AddWithValue("@f_txt", cleanName + ".txt");
+                                    cmd.CommandText = "SELECT title, content, filename FROM songs WHERE filename = @f ORDER BY id LIMIT 1;";
+                                    cmd.Parameters.AddWithValue("@f", cleanName + ".txt");
                                     using var r = cmd.ExecuteReader();
                                     if (r.Read())
                                     {
@@ -626,24 +678,39 @@ namespace Banklycs
                         }
 
                         // IN-PROCESS ATOMIC CALL TO CREATE PLAYLIST (ZERO SUBPROCESS!)
+                        // The playlist may only reference songs that actually compiled.
                         string playlistDocPath = Path.Combine(ProPresenterDir, "Playlists", "Library");
-                        List<string> songNamesForPlaylist = data.songs
-                            .Select(s => s.EndsWith(".pro", StringComparison.OrdinalIgnoreCase) ? s : s + ".pro")
-                            .ToList();
-
-                        Program.CreatePlaylistDirect(playlistDocPath, data.name, songNamesForPlaylist, libBanks);
+                        var compiledNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        foreach (string s in data.songs)
+                        {
+                            string c = s.Trim();
+                            if (c.EndsWith(".pro", StringComparison.OrdinalIgnoreCase))
+                                c = c.Substring(0, c.Length - 4);
+                            else if (c.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+                                c = c.Substring(0, c.Length - 4);
+                            if (File.Exists(Path.Combine(libBanks, c + ".pro")))
+                                compiledNames.Add(c + ".pro");
+                        }
+                        List<string> songNamesForPlaylist = compiledNames.ToList();
+                        if (songNamesForPlaylist.Count > 0)
+                        {
+                            Program.CreatePlaylistDirect(playlistDocPath, data.name, songNamesForPlaylist, libBanks);
+                        }
 
                         var injectResult = new
                         {
-                            success = true,
+                            success = missingFiles.Count == 0,
+                            partial = missingFiles.Count > 0 && compiledCount > 0,
                             playlist = data.name,
                             songs_count = data.songs.Count,
                             compiled_to_library = compiledCount,
                             missing_in_pro = missingFiles,
-                            engine_output = $"[OK] Playlist '{data.name}' berhasil disuntikkan secara on-demand ({data.songs.Count} lagu)!"
+                            engine_output = missingFiles.Count == 0
+                                ? $"[OK] Playlist '{data.name}' berhasil disuntikkan secara on-demand ({data.songs.Count} lagu)!"
+                                : $"[WARN] Playlist '{data.name}' parsial: {compiledCount} dari {data.songs.Count} lagu terkompilasi. Gagal: {string.Join(", ", missingFiles)}"
                         };
 
-                        SendJson(req, res, injectResult);
+                        SendJson(req, res, injectResult, missingFiles.Count == data.songs.Count ? 500 : 200);
                         return;
                     }
                 }

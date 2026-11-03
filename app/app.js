@@ -194,10 +194,20 @@
       state.currentResults = data.songs || [];
       state.renderedCount = 0;
       resultsCount.textContent = state.currentResults.length.toLocaleString();
+      resetSelection();
       renderSongListInitial();
     } catch {
       songListEl.innerHTML = '<div class="pro-empty-canvas" style="padding: 24px;"><p class="empty-sub-text">Error loading songs</p></div>';
     }
+  }
+
+  function resetSelection() {
+    state.selectedSong = null;
+    addToRundownBtn.disabled = true;
+    inspectorCategoryEl.textContent = 'READY';
+    inspectorTitleEl.textContent = 'Select a song from Library';
+    inspectorArtistEl.textContent = '';
+    inspectorContentEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-main-text">No Presentation Selected</p><p class="empty-sub-text">Click any song from the Library on the left to preview slide canvas.</p></div>';
   }
 
   function renderSongListInitial() {
@@ -225,6 +235,9 @@
       row.className = 'pro-row' + (isSelected ? ' selected' : '');
       row.setAttribute('role', 'option');
       row.setAttribute('data-idx', globalIdx);
+      row.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+      row.setAttribute('tabindex', '-1');
+      row.title = song.title;
 
       row.innerHTML = `
         <div class="pro-row-main">
@@ -276,11 +289,9 @@
     // Highlight row
     document.querySelectorAll('.pro-row').forEach(el => {
       const idx = el.getAttribute('data-idx');
-      if (state.currentResults[idx] && state.currentResults[idx].filename === song.filename) {
-        el.classList.add('selected');
-      } else {
-        el.classList.remove('selected');
-      }
+      const hit = state.currentResults[idx] && state.currentResults[idx].filename === song.filename;
+      el.classList.toggle('selected', !!hit);
+      el.setAttribute('aria-selected', hit ? 'true' : 'false');
     });
 
     inspectorCategoryEl.textContent = song.category || 'PRO';
@@ -507,8 +518,9 @@
       });
 
       const data = await res.json();
-      if (res.ok && data.success) {
-        const countCompiled = data.compiled_to_library ?? data.copied_to_library ?? data.songs_count;
+      const missing = Array.isArray(data.missing_in_pro) ? data.missing_in_pro : [];
+      const compiledCount = (typeof data.compiled_to_library === 'number') ? data.compiled_to_library : (data.songs_count || 0);
+      if (missing.length === 0 && (res.ok || data.success)) {
         showModal(
           'Injection Successful',
           `
@@ -517,7 +529,7 @@
             </div>
             <div style="background: #181818; border: 1px solid #333; padding: 10px; margin-bottom: 12px; border-radius: 4px;">
               <p style="margin-bottom: 4px;"><strong>Songs in Playlist:</strong> ${data.songs_count} songs</p>
-              <p><strong>Compiled to Banks:</strong> ${countCompiled} presentations</p>
+              <p><strong>Compiled to Banks:</strong> ${compiledCount} presentations</p>
             </div>
             <div style="font-size: 12px; color: #999999; line-height: 1.4;">
               Open <strong>ProPresenter 7</strong>. The playlist is active under Library Playlists and ready for live presentation immediately without restart.
@@ -525,7 +537,30 @@
           `
         );
       } else {
-        showModal('Injection Failed', `<div style="color: #ff453a;">${escapeHtml(data.error || 'Compiler error')}</div>`);
+        const missingList = missing.length
+          ? `<div style="background: #2a1214; border: 1px solid #5a2226; padding: 10px; margin-bottom: 12px; border-radius: 4px;">
+              <p style="color: #ff9d97; margin-bottom: 6px;"><strong>Gagal dikompilasi (${missing.length}):</strong></p>
+              <ul style="margin: 0; padding-left: 16px; color: #e0e0e0; font-size: 12px; line-height: 1.5;">
+                ${missing.map(m => `<li>${escapeHtml(m)}</li>`).join('')}
+              </ul>
+            </div>`
+          : '';
+        showModal(
+          compiledCount > 0 ? 'Injection Partial' : 'Injection Failed',
+          `
+            <div style="font-weight: 700; color: ${compiledCount > 0 ? '#ffd60a' : '#ff453a'}; font-size: 14px; margin-bottom: 10px;">
+              ${compiledCount > 0 ? '⚠' : '✕'} Playlist '${escapeHtml(data.playlist || playlistName)}' ${compiledCount > 0 ? 'partially injected' : 'failed'}
+            </div>
+            <div style="background: #181818; border: 1px solid #333; padding: 10px; margin-bottom: 12px; border-radius: 4px;">
+              <p style="margin-bottom: 4px;"><strong>Requested:</strong> ${data.songs_count || songFileNames.length} songs</p>
+              <p><strong>Compiled to Banks:</strong> ${compiledCount}</p>
+            </div>
+            ${missingList}
+            <div style="font-size: 12px; color: #999999; line-height: 1.4;">
+              ${escapeHtml(data.error || data.engine_output || 'Compiler error')}
+            </div>
+          `
+        );
       }
     } catch {
       showModal('Connection Error', '<div style="color: #ff453a;">Cannot connect to local engine at 127.0.0.1:5050.</div>');
