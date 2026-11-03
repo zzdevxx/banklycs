@@ -5,8 +5,17 @@ from collections import Counter
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-txt_dir = os.path.join(BASE_DIR, "TXT")
-pro_dir = os.path.join(BASE_DIR, "PRO")
+txt_dir = os.path.join(BASE_DIR, "database")
+if not os.path.isdir(txt_dir):
+    txt_dir = os.path.join(BASE_DIR, "database")
+if not os.path.isdir(txt_dir):
+    txt_dir = os.path.join(BASE_DIR, "TXT")
+
+pro_dir = os.path.join(BASE_DIR, "engine", "PRO")
+if not os.path.isdir(pro_dir):
+    pro_dir = os.path.join(BASE_DIR, "engine", "PRO")
+if not os.path.isdir(pro_dir):
+    pro_dir = os.path.join(BASE_DIR, "PRO")
 
 txt_map = {}
 for root, _, files in os.walk(txt_dir):

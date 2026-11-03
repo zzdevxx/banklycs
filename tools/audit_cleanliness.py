@@ -4,16 +4,34 @@ import sys
 import hashlib
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-PPR_DIR = os.path.join(os.environ.get("OneDrive", os.path.join(os.path.expanduser("~"), "OneDrive")), "Dokumen", "ProPresenter")
+def get_ppr_dir():
+    for base in [os.environ.get("OneDrive"), os.environ.get("USERPROFILE")]:
+        if not base: continue
+        for doc in ["Documents", "Dokumen"]:
+            c = os.path.join(base, doc, "ProPresenter")
+            if os.path.isdir(c): return c
+    return None
+
+PPR_DIR = get_ppr_dir()
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-TXT_DIR = os.path.join(BASE_DIR, "TXT")
-PRO_DIR = os.path.join(BASE_DIR, "PRO")
-LIB_DIR = os.path.join(PPR_DIR, "Libraries", "Banks")
+TXT_DIR = os.path.join(BASE_DIR, "database")
+if not os.path.isdir(TXT_DIR):
+    TXT_DIR = os.path.join(BASE_DIR, "database")
+if not os.path.isdir(TXT_DIR):
+    TXT_DIR = os.path.join(BASE_DIR, "TXT")
+
+PRO_DIR = os.path.join(BASE_DIR, "engine", "PRO")
+if not os.path.isdir(PRO_DIR):
+    PRO_DIR = os.path.join(BASE_DIR, "engine", "PRO")
+if not os.path.isdir(PRO_DIR):
+    PRO_DIR = os.path.join(BASE_DIR, "PRO")
+
+LIB_DIR = os.path.join(PPR_DIR, "Libraries", "Banks") if PPR_DIR else ""
 
 print("==============================================================================")
-print("  AUDIT KEBERSIHAN & INTEGRITAS MENYELURUH (16.475 LAGU)")
+print("  AUDIT KEBERSIHAN & INTEGRITAS MENYELURUH (BANKLYCS)")
 print("==============================================================================")
 
 # 1. Check directory file counts
@@ -27,22 +45,19 @@ pro_files = [f for f in os.listdir(PRO_DIR) if f.endswith(".pro")]
 lib_files = [f for f in os.listdir(LIB_DIR) if f.endswith(".pro")] if os.path.exists(LIB_DIR) else []
 
 print(f"\n[1/5] Jumlah File di Setiap Lokasi:")
-print(f"  * TXT       : {len(txt_files):,} file")
-print(f"  * PRO       : {len(pro_files):,} file")
-print(f"  * ProPresenter Lib  : {len(lib_files):,} file")
-is_synced = (len(txt_files) == len(pro_files) == len(lib_files))
-print(f"  -> Status Sinkron   : {'100% PERSIS SINKRON' if is_synced else 'TIDAK SINKRON!'}")
+print(f"  * database (TXT) : {len(txt_files):,} file")
+print(f"  * engine/PRO     : {len(pro_files):,} file")
+print(f"  * ProPresenter Injected : {len(lib_files):,} file (hanya lagu aktif)")
+is_synced = (len(txt_files) == len(pro_files))
+print(f"  -> Status Sinkron Database vs Engine Cache : {'100% PERSIS SINKRON' if is_synced else 'TIDAK SINKRON!'}")
 
 # 2. Check 1-to-1 match between TXT and PRO
 txt_bases = set(f[:-4].lower() for f in txt_files)
 pro_bases = set(f[:-4].lower() for f in pro_files)
-lib_bases = set(f[:-4].lower() for f in lib_files)
 
 missing_in_pro = txt_bases - pro_bases
-missing_in_lib = txt_bases - lib_bases
 print(f"\n[2/5] Pemetaan 1-ke-1:")
-print(f"  * Hilang di PRO      : {len(missing_in_pro)} file")
-print(f"  * Hilang di ProPresenter Lib : {len(missing_in_lib)} file")
+print(f"  * Hilang di engine/PRO : {len(missing_in_pro)} file")
 
 # 3. Check PRO file sizes (detect corrupted / 0-byte presentations)
 zero_pro = [f for f in pro_files if os.path.getsize(os.path.join(PRO_DIR, f)) == 0]

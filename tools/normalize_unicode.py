@@ -15,7 +15,9 @@ import unicodedata
 from collections import Counter
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-TXT_DIR = os.path.join(BASE_DIR, "TXT")
+TXT_DIR = os.path.join(BASE_DIR, "database")
+if not os.path.isdir(TXT_DIR):
+    TXT_DIR = os.path.join(BASE_DIR, "TXT")
 REPORT = os.path.join(BASE_DIR, "Tools", "_report_unicode.txt")
 
 # ==== Peta normalisasi sederhana ====

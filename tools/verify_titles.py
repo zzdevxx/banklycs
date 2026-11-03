@@ -3,7 +3,11 @@ from collections import defaultdict
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-txt_dir = os.path.join(BASE_DIR, "TXT")
+txt_dir = os.path.join(BASE_DIR, "database")
+if not os.path.isdir(txt_dir):
+    txt_dir = os.path.join(BASE_DIR, "database")
+if not os.path.isdir(txt_dir):
+    txt_dir = os.path.join(BASE_DIR, "TXT")
 files = [f[:-4] for root, _, files in os.walk(txt_dir) for f in files if f.endswith(".txt")]
 
 titles = defaultdict(list)

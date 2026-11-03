@@ -14,7 +14,9 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__
 sys.stdout.reconfigure(encoding='utf-8')
 ctx = ssl._create_unverified_context()
 
-TXT_DIR = os.path.join(BASE_DIR, "TXT")
+TXT_DIR = os.path.join(BASE_DIR, "database")
+if not os.path.isdir(TXT_DIR):
+    TXT_DIR = os.path.join(BASE_DIR, "TXT")
 
 def fetch_url(url, timeout=12):
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})

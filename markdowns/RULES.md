@@ -1,144 +1,119 @@
 # BANKLYCS — DOKTRIN & ATURAN LIRIK MASTER (RULES)
-> **Repo**: `banklycs` (portable — semua tool resolve path relatif)
-> **Database lirik**: `database\` — **20.301 lagu, satu folder datar, TANPA subfolder**
-> **Cache ProPresenter**: `engine\PRO\` (format binary Protobuf Pro7)
-> **Aplikasi GUI**: `app\` (Studio Console UI, Start.bat)
-> **Konteks Agent**: baca `markdowns\AGENT_CONTEXT.md` dan `markdowns\HANDOFF.md`
+
+> **Proyek**: `banklycs` — Bank Lirik & Injektor Cepat ProPresenter 7  
+> **Master Database**: `database/` — **20.301 lagu, SATU folder datar murni, TANPA subfolder**  
+> **Engine & Cache**: `engine/PRO/` (file binary Protobuf ProPresenter 7)  
+> **Studio Console GUI**: `app/` (Server lokal Python + UI antarmuka web, `Start.bat`)  
+> **Dokumentasi & Konteks**: Folder `markdowns/`  
 > **Terakhir diperbarui**: 2026-11-03
 
 ---
 
-## 1. Tujuan (Goals)
-1. Operator **tidak pernah** copy-paste lirik dari browser lagi. Buka `Start.bat`, cari judul di antara 20.000+ lagu dalam 2 ms, klik inject ke ProPresenter.
-2. ProPresenter tetap ringan dan cepat terbuka (1 detik) tanpa crash karena library hanya menampung lagu rundown aktif.
-3. **Simple**: satu folder `database\` berisi file `.txt`. Tidak ada subfolder yang membingungkan.
+## 1. Visi & Filosofi Sistem
+
+1. **Operator Sentris**: Operator proyektor gereja **tidak boleh lagi** mencari & *copy-paste* lirik terburu-buru dari Google/browser saat kebaktian berlangsung. Cukup buka `Start.bat`, ketik judul/nomor buku, lagu ketemu dalam <2 milidetik, lalu klik `INJECT KE PROPRESENTER`.
+2. **ProPresenter Selalu Ringan (<1 detik startup)**: Memasukkan 20.000 file sekaligus ke dalam ProPresenter terbukti menyebabkan *deadlock* thread UI dan tabrakan indeks Lucene. Banklycs menyimpan 20.000 lagu di vault lokal, dan **hanya menyuntikkan (inject) 5–10 lagu rundown aktif** ke ProPresenter.
+3. **Penyimpanan Sederhana (Single Source of Truth)**: Folder `database/` berisi file `.txt` murni berformat standar yang dapat dibaca manusia (Human-Readable), ramah Notepad, dan mudah dilacak perubahannya di Git. File `.pro` di `engine/PRO/` hanyalah artefak kompilasi mesin.
 
 ---
 
-## 2. Struktur Folder
-```
+## 2. Struktur Repositori Bersih
+
+```text
 banklycs/
-├── database/        ← master lirik .txt (20.301 lagu flat)
-├── app/             ← aplikasi Studio Console GUI
-├── engine/          ← compiler C# .NET 8 & isolasi cache engine/PRO/
-├── tools/           ← scraper & data pipeline (Python)
-├── markdowns/       ← panduan doktrin, aturan lirik, & konteks agent
-├── Start.bat        ← launcher satu klik
-└── README.md        ← panduan umum
+├── database/        ← Master lirik teks murni (.txt, 20.301 lagu flat, SATU-SATUNYA acuan)
+├── app/             ← Aplikasi Studio Console GUI (server.py, index.html, style.css, app.js)
+├── engine/          ← Compiler C# .NET 8 (ProEngine.exe) & isolasi cache .pro (engine/PRO/)
+├── tools/           ← Skrip scraper web & data pipeline (Python)
+├── markdowns/       ← Panduan doktrin, arsitektur, aturan lirik, & konteks agent
+├── Start.bat        ← Launcher satu klik untuk operator gereja
+├── README.md        ← Panduan umum pengguna
+└── .gitignore       ← Mengabaikan cache build & file sementara
 ```
-ProPresenter Library: `C:\Users\ASUS\OneDrive\Dokumen\ProPresenter\Libraries\Banks`
-(auto-registered mode MERGE; playlist ibadah aman selama build incremental).
 
 ---
 
-## 3. Aturan Wajib File TXT (Golden Rules)
+## 3. Aturan Wajib Penulisan Lirik (Golden Rules)
 
-### A. Penamaan File
-- **Poin 1 — Format**: `Judul Lagu.txt` atau `Judul Lagu - Artis.txt`.
-- **Poin 2 — Judul saja (tanpa artis)** untuk lagu yang **artinya/penyanyinya tidak diketahui** dari sumber (dulu berlabel `No Name`). Contoh: `Adalah Baik Untuk.txt`.
-- **Poin 3 — Satu artis saja** bila multi-artis/feat. — ambil artis utama. Contoh: `Build My Life - Pat Barrett.txt`.
-- **Poin 4 — Pengecualian sah duo/tim resmi**: `Robert & Lea Sutanto`, `Rivers & Robots`, `All Sons & Daughters`.
-- **Poin 5 — Buku himne pakai nomor sebagai "artis"**: `KJ 392`, `BE 179`, `NKB 125`, `KK 459`, `PKJ 76`, `KLIK 446`, `NNBT 12`. Nomor tetap bisa diketik di pencarian ProPresenter.
-- **Poin 6 — Title Case, BUKAN kapital semua**: `Kumenang.txt` ✔ / `KUMENANG.txt` ✘.
-  - Kata kecil Indonesia (dan, di, ke, untuk, yang...) tetap kecil kecuali kata pertama.
-  - Huruf pertama judul wajib kapital. Nama orang/tempat dipertahankan apa adanya dari sumber.
-- **Poin 7 — Nama file = baris 2 isi file.** Keduanya harus identik persis (slide BLANK menampilkan judul).
-- **Poin 8 — Basename HARMONIS GLOBAL** (folder PRO datar, tidak boleh ada 2 file `.txt` dengan nama sama).
+### A. Format & Standar Penamaan File
+1. **Format Standar**: `Judul Lagu - Artis.txt` atau `Judul Lagu.txt`.
+2. **Tanpa Artis Jika Tidak Diketahui**: Jika artis/pencipta lagu tidak tercantum pada sumber resmi, gunakan nama file berupa judul lagu saja (contoh: `Adalah Baik Untuk.txt`). **DILARANG** menambahkan label rekaan seperti `- No Name`, `- Unknown`, atau `- Praise & Worship`.
+3. **Satu Artis Utama**: Jika lagu dinyanyikan secara kolaborasi/fitur (*featuring*), ambil hanya artis utama (contoh: `Build My Life - Pat Barrett.txt`).
+4. **Pengecualian Sah Duo/Grup Resmi**: Nama grup yang sah dipertahankan utuh (contoh: `Robert & Lea Sutanto`, `Rivers & Robots`, `All Sons & Daughters`, `GMS Live`, `JPCC Worship`).
+5. **Standar Buku Himne Resmi**: Gunakan singkatan buku dan nomor urut sebagai "artis" agar mudah dicari langsung di pencarian:
+   - `KJ 392` (Kidung Jemaat)
+   - `BE 179` (Buku Ende HKBP)
+   - `NKB 125` (Nyanyikanlah Kidung Baru)
+   - `KK 459` (Kidung Keesaan)
+   - `PKJ 76` (Pelengkap Kidung Jemaat)
+   - `KLIK 446` (Kumpulan Lagu Ibadah Kreatif)
+   - `NNBT 12` (Nyanyian Baru Bagi Tuhan)
+   *(Contoh: `Ku Berbahagia - KJ 392.txt`, `Ro Ma Ho Tu Jesus - BE 179.txt`)*
+6. **Title Case**: Judul lagu wajib menggunakan Title Case (contoh: `Kumenang.txt` ✔ / `KUMENANG.txt` ✘).
+   - Kata hubung dan preposisi kecil bahasa Indonesia (*dan, di, ke, dari, untuk, yang, pada, demi*) tetap huruf kecil kecuali berada di awal judul.
+7. **Kesesuaian Baris Kedua**: Baris kedua dalam isi file **wajib identik persis** dengan nama file tanpa ekstensi `.txt`.
+8. **Keunikan Global Datar**: Seluruh nama file dalam `database/` harus unik secara global karena disimpan dalam satu folder datar tanpa subfolder.
 
-### B. Struktur Isi
-```
+---
+
+### B. Struktur Isi File Lirik
+Setiap file `.txt` wajib mengikuti format baku berikut:
+
+```text
 BLANK
-Judul Lagu - Artis        ← identik dengan nama file
+Judul Lagu - Artis
 
 VERSE 1
-Baris lirik 1
-Baris lirik 2
+Baris lirik pertama
+Baris lirik kedua
 
 CHORUS
-Baris reff 1
-Baris reff 2
+Baris reff pertama
+Baris reff kedua
 ```
-- Baris 1 = `BLANK`, baris 2 = judul, lalu baris kosong.
-- **Header bagian (UPPERCASE, recognized engine, case-insensitive)**:
-  `BLANK`, `INTRO`, `VERSE`/`VERSE 1..n`, `PRE-CHORUS`, `CHORUS`, `BRIDGE`, `TAG`, `INTERLUDE`, `ENDING`, `OUTRO`.
-  - `BAIT` dinormalkan → `VERSE`; `REFF` → `CHORUS`; `PRE CHORUS` → `PRE-CHORUS`.
-- **Maksimal 2 baris per slide** (antar slide dipisah satu baris kosong).
-- **Baris lirik TIDAK boleh kapital semua** — sentence case (`Ada kuasa dalam darah-Nya` bukan `ADA KUASA DALAM DARAH-NYA`). Header bagian tetap kapital.
-- **Kata ganti ilahi**: `Mu`, `Nya`, `Ku`, `Kau` kapital (`diamankan-Nya`, `Berserah Kepada Allahku`).
-- **Encoding UTF-8 tanpa BOM**, petik ASCII `'` `"`, tanpa mojibake/zero-width.
-- **Dilarang**: placeholder `LYRIC_LINE_n`, teks `Chords and Lyrics`, link URL, lirik karangan AI.
 
-### C. Isi = Sumber Valid, Bukan Halusinasi
-- Seluruh lirik hasil **scrape langsung** dari situs (lihat §6) — diverifikasi identik dengan halaman sumber.
-- Tidak ada pembuatan lirik oleh LLM. Kalau sumber tidak menyebut penyanyi → **judul saja**, bukan mengarang artis.
-
----
-
-## 4. Menambah Lagu Baru (3 cara)
-1. **Buat manual**: simpan `.txt` mengikuti §3 langsung di `TXT\` → jalankan `Generate.ps1`. Selesai < 1 detik (incremental).
-2. **Scraper** (lihat §5): otomatis menulis ke `TXT\` datar, skip yang sudah ada (cek rekursif + judul).
-3. **Templat kosong**:
-   ```powershell
-   # contoh 2 baris per slide, header kapital, tanpa artis jika tidak diketahui
-   ```
-
-## 5. Tools & Scripts (folder `Tools\`)
-| Script | Fungsi |
-|---|---|
-| `scrape_psalmnote.py` | Katalog API psalmnote.com (7.095 lagu) → TXT datar, artis asli |
-| `scrape_liriklagukristen.py` | Sitemap liriklagukristen.id (±4.800 lagu) → TXT datar; fallback artis `No Name` → nama file jadi judul saja (via enforce rules) |
-| `scrape_kidung_com.py`, `scrape_kk.py`, `scrape_buku_ende.py`, `scrape_hymnals.py` | Buku himne (KJ/PKJ/NKB/KK/BE) — pakai penamaan `Judul - KJ 123` |
-| `import_english_openlp.py`, `import_klik_nnbt.py`, `import_pujian_jawa.py` | Impor basis data open-source |
-| `normalize_unicode.py` | Perbaikan mojibake/karakter aneh (idempoten) |
-| `enforce_flat_rules.py` | **Perapi massal**: datar, judul Title Case, hapus duplikat konten, baris2=namafile, buang placeholder. Jalankan dry-run dulu, lalu `--apply` |
-| `verify_songs.py`, `verify_titles.py`, `audit_cleanliness.py` | Verifikasi kualitas bank |
-| `summarize_db.py` | Ringkasan statistik koleksi |
-
-Setelah scraper massal: jalankan `python Tools\enforce_flat_rules.py` (cek) → `--apply` → `Generate.ps1`.
+1. **Slide Pembuka (BLANK)**:
+   - Baris 1: `BLANK`
+   - Baris 2: Judul lagu (persis sama dengan nama file)
+   - Baris 3: Kosong (*empty line*)
+2. **Maksimal 2 Baris per Slide**:
+   - Untuk keterbacaan optimal jemaat di layar proyektor/LED, setiap slide dibatasi maksimal 2 baris teks.
+   - Antar slide dipisahkan oleh satu baris kosong.
+3. **Header Bagian (UPPERCASE)**:
+   - Header bagian yang dikenali oleh engine: `BLANK`, `INTRO`, `VERSE` (atau `VERSE 1..n`), `PRE-CHORUS`, `CHORUS`, `BRIDGE`, `TAG`, `INTERLUDE`, `ENDING`, `OUTRO`.
+   - Istilah bahasa Indonesia dinormalkan: `BAIT` → `VERSE`, `REFF` → `CHORUS`.
+4. **Sentence Case pada Teks Lirik**:
+   - Teks lirik **tidak boleh ditulis huruf kapital semua** (*ALL CAPS*).
+   - Huruf kapital hanya digunakan pada awal baris, nama diri, dan kata ganti ilahi (`Mu`, `Nya`, `Ku`, `Kau`, `Tuhan`, `Allah`).
+5. **Kebersihan Karakter**:
+   - Disimpan dengan format UTF-8 murni (tanpa BOM).
+   - Menggunakan tanda petik ASCII standar (`'` dan `"`), bukan petik miring miring mojibake.
+   - Tidak boleh mengandung tautan web (URL), chord musik, atau placeholder generator (`LYRIC_LINE_1`).
 
 ---
 
-## 6. Sumber Web Terpercaya (untuk validasi & scraping)
-**Indonesia:**
-1. **Psalmnote** `https://psalmnote.com` — metadata lengkap + struktur VERSE/CHORUS (JPCC, GMS, NDC, Symphony, dll).
-2. **LirikLaguKristen.id** `https://liriklagukristen.id` — lagu lawas PD/80-90an & kontemporer.
-3. **Kidung.com** `https://kidung.com` — arsip rohani Indonesia.
-4. **Alkitab.mobi/kidung** — teks resmi KJ, PKJ, NKB, KK, BE.
-5. **Buku Ende HKBP** `https://bukuende.hkbp.or.id` — BE Batak toba.
-6. **LALS Project** (GitHub) — JSON buku nyanyian Indonesia.
-
-**Internasional:**
-7. **CCLI SongSelect** `https://songselect.ccli.com` — standar emas lirik gereja global.
-8. **PraiseCharts** — chord + lirik.
-9. **Hymnary.org** — ensiklopedia himne klasik (data komposer abad 16–20).
-10. **OpenLP / OpenLyrics DB** (GitHub) — basis data ibadah open-source.
-
-Cara validasi cepat: buka URL sumber, cari lagu, bandingkan baris per baris dengan isi `.txt`.
+### C. Doktrin Nol-Halusinasi (Strict Zero-Hallucination)
+- **DILARANG KERAS** menggunakan AI/LLM untuk mengarang atau melengkapi bait lirik lagu.
+- Semua lirik wajib bersumber dari data autentik: hasil scraping situs lirik tepercaya, buku himne gereja berlisensi, atau rekaman audio resmi.
+- Jika ada bait yang tidak lengkap dari sumber web, cari sumber pembanding resmi atau tinggalkan apa adanya sesuai dokumen aslinya.
 
 ---
 
-## 7. Kompilasi Engine
+## 4. Alur Kerja Harian & Pemeliharaan
+
 ```powershell
-# INCREMENTAL (default, aman — playlist tidak disentuh)
-powershell -ExecutionPolicy Bypass -File .\Generate.ps1
+# 1. Menjalankan Aplikasi Studio Console (Port 5050)
+.\Start.bat
 
-# FULL REBUILD (kosongkan PRO & library Banks; playlist ikut bersih)
-powershell -ExecutionPolicy Bypass -File .\Generate.ps1 -Full
+# 2. Menjalankan Audit Kualitas & Sinkronisasi
+python tools/audit_cleanliness.py
 
-# Rebuild binary engine bila source C# diubah
-powershell -ExecutionPolicy Bypass -File .\Generate.ps1 -RebuildEngine -Full
+# 3. Menjalankan Verifikasi Validitas Format
+python tools/verify_songs.py
+
+# 4. Melihat Statistik Komposisi Database
+python tools/summarize_db.py
+
+# 5. Menjalankan Engine Compiler (Hanya jika perlu rebuild .pro cache)
+powershell -ExecutionPolicy Bypass -File .\engine\Generate.ps1
 ```
-- Engine memindai `TXT\` rekursif (`SearchOption.AllDirectories`) → tetap benar walau folder datar.
-- Incremental pakai cache SHA-256 (`Engine\compile_manifest.json`): file tak berubah → skip; `.pro` yatim (TXT dihapus/rename) → otomatis dibersihkan dari `PRO\` & library.
-- Tema master `zz` (`Lyric - Praise`, CMGSans-Bold fs134, 1920x1080; fallback `Engine\ThemeTemplate`).
-- Performa: full 20.301 lagu ± 30-60 detik; incremental ± 1-4 detik.
-- Error kompilasi per-file dicatat `Engine\last_errors.txt`, tidak menggagalkan batch.
-- OneDrive: kalau ProPresenter lambat, set folder `ProPresenter` "Always keep on this device".
-
-## 8. Alur Harian Operator
-1. ProPresenter 7 → tab Search → ketik judul (atau nomor `KJ 458`, `BE 234`).
-2. Double-click lagu → preview → tayangkan; drag ke playlist untuk rundown.
-3. Lagu baru? Taruh `.txt` di `TXT\` → `Generate.ps1` → langsung muncul.
-
-## 9. Riwayat Perapihan (changelog)
-- **2026-11-02**: Migrasi label artis `Praise & Worship` (4.600 file) → hapus 2.408 duplikat + rename `No Name`; scrape Psalmnote +5.434 lagu; **FLATTEN total**: 44 subfolder (7.413 file) digabung ke root, 750 duplikat konten dihapus (411 di antaranya No Name yang identik dgn versi berartis), 496 judul ALL-CAPS→Title Case, 3.029 `No Name`→judul saja, placeholder `LYRIC_LINE_n` (30 file) dibuang, baris2 disejajarkan dgn nama file (181 selisih). **Akhir: 20.301 file datar, 0 error.** Backup: `_backup_TXT_20261102.zip` (9,7 MB).

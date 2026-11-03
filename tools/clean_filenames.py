@@ -3,7 +3,9 @@ import re
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-txt_dir = os.path.join(BASE_DIR, "TXT")
+txt_dir = os.path.join(BASE_DIR, "database")
+if not os.path.isdir(txt_dir):
+    txt_dir = os.path.join(BASE_DIR, "TXT")
 for f in os.listdir(txt_dir):
     clean_name = f.replace('â€™', "'").replace('â€˜', "'").replace('’', "'").replace('‘', "'")
     clean_name = clean_name.replace('â€œ', "'").replace('â€', "'").replace('“', "'").replace('”', "'").replace('"', "'")

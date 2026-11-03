@@ -78,6 +78,14 @@ banklycs/
 │   ├── scrape_buku_ende.py
 │   └── ...
 │
+├── 📂 markdowns/            ← Dokumentasi arsitektur, doktrin lirik, & panduan kontribusi
+│   ├── RULES.md             ← Aturan wajib format lirik & penamaan
+│   ├── ARCHITECTURE.md      ← Arsitektur sistem & diagnosis crash ProPresenter
+│   ├── CONTRIBUTING.md      ← Panduan kontribusi untuk gereja & relawan
+│   ├── SCRAPING_GUIDE.md    ← Panduan etika & pengembangan scraper
+│   ├── AGENT_CONTEXT.md     ← Konteks wajib untuk AI coding agent
+│   └── HANDOFF.md           ← Status serah terima & roadmap proyek
+│
 ├── 🚀 Start.bat             ← SATU-SATUNYA file yang perlu diklik oleh user awam!
 └── 📄 README.md             ← Panduan pemakaian ini
 ```
@@ -102,6 +110,20 @@ Cukup buat file teks baru di dalam folder [`database/`](database/):
    Baris reff kedua
    ```
 3. Begitu file disimpan, lagu langsung otomatis terindeks di pencarian GUI Banklycs.
+
+Untuk panduan format lengkap, silakan baca [markdowns/RULES.md](markdowns/RULES.md) dan [markdowns/CONTRIBUTING.md](markdowns/CONTRIBUTING.md).
+
+---
+
+## 📚 Dokumentasi Teknis
+
+Dokumentasi lengkap tersimpan rapi di dalam folder [`markdowns/`](markdowns/):
+- 📖 [RULES.md](markdowns/RULES.md) — Doktrin & standarisasi format lirik panggung.
+- 🏗️ [ARCHITECTURE.md](markdowns/ARCHITECTURE.md) — Analisis teknis crash ProPresenter 7 & arsitektur Injektor Realtime.
+- 🤝 [CONTRIBUTING.md](markdowns/CONTRIBUTING.md) — Panduan kontribusi lagu bagi tim multimedia gereja.
+- 🕷️ [SCRAPING_GUIDE.md](markdowns/SCRAPING_GUIDE.md) — Panduan etika web scraping & pipeline data.
+- 🤖 [AGENT_CONTEXT.md](markdowns/AGENT_CONTEXT.md) — Konteks sistem & operational manual untuk AI agent.
+- 📋 [HANDOFF.md](markdowns/HANDOFF.md) — Catatan serah terima status teknis & roadmap.
 
 ---
 

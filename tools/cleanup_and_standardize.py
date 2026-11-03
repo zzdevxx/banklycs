@@ -5,7 +5,9 @@ import sys
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 sys.stdout.reconfigure(encoding='utf-8')
-TXT_DIR = os.path.join(BASE_DIR, "TXT")
+TXT_DIR = os.path.join(BASE_DIR, "database")
+if not os.path.isdir(TXT_DIR):
+    TXT_DIR = os.path.join(BASE_DIR, "TXT")
 
 def clean_song_file(filepath):
     with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
