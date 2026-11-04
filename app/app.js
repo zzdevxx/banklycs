@@ -329,7 +329,9 @@
       songsEl.textContent = data.total_songs.toLocaleString('id-ID');
     }
     if (dbEl && typeof data.db_size_bytes === 'number' && data.db_size_bytes > 0) {
-      dbEl.textContent = (data.db_size_bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      // Decimal MB, matching the documented 61.42 MB. Binary MiB here showed
+      // 58.6 MB for the same file, so the UI contradicted the docs.
+      dbEl.textContent = (data.db_size_bytes / 1_000_000).toFixed(2) + ' MB';
     }
   }
 
