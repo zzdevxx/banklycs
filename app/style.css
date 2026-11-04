@@ -996,6 +996,13 @@ body.pro-app {
   padding: 16px;
 }
 
+/* Generic hide used by JS toggles (font install button, toast, overlays).
+   Before this rule only .modal-overlay/.pro-toast were covered, so
+   classList.add('hidden') on the font button did nothing. */
+.hidden {
+  display: none !important;
+}
+
 .modal-overlay.hidden {
   display: none;
 }

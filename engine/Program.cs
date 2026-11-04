@@ -21,7 +21,35 @@ internal class Program
 		public List<List<string>> Slides { get; set; } = new List<List<string>>();
 	}
 
-	private static readonly Regex HeaderRegex = new Regex("^(BLANK|INTRO|VERSE(\\s+\\d+)?|PRE[\\s\\-]*CHORUS(\\s+\\d+)?|CHORUS(\\s+\\d+)?|BRIDGE(\\s+\\d+)?|TAG|INTERLUDE|ENDING|OUTRO)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+	// BAIT/REFF are the Indonesian section names used by KJ/NKB/PKJ hymnals.
+	// RULES.md promises the engine normalizes them, so they are part of the header set here.
+	private static readonly Regex HeaderRegex = new Regex("^(BLANK|INTRO|VERSE(\\s+\\d+)?|PRE[\\s\\-]*CHORUS(\\s+\\d+)?|CHORUS(\\s+\\d+)?|BRIDGE(\\s+\\d+)?|TAG|INTERLUDE|ENDING|OUTRO|BAIT(\\s+\\d+)?|REFF(\\s+\\d+)?)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+	// ProPresenter keeps its .pro files and Playlists/Library open while it runs.
+	// An in-place partial write would leave a corrupt protobuf, so every mutation goes
+	// through a same-directory temp file and an atomic rename over the target.
+	internal static void WriteAllBytesAtomic(string targetPath, byte[] bytes)
+	{
+		string dir = Path.GetDirectoryName(targetPath) ?? "";
+		if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+		{
+			Directory.CreateDirectory(dir);
+		}
+		string tmp = targetPath + ".tmp-" + Guid.NewGuid().ToString("N");
+		try
+		{
+			File.WriteAllBytes(tmp, bytes);
+			File.Move(tmp, targetPath, overwrite: true);
+		}
+		finally
+		{
+			if (File.Exists(tmp))
+			{
+				try { File.Delete(tmp); }
+				catch (Exception cleanupEx) { Console.WriteLine($"[WARN] Temp cleanup failed for {tmp}: {cleanupEx.Message}"); }
+			}
+		}
+	}
 
 	public static void CreatePlaylistDirect(string playlistDocPath, string playlistName, List<string> songFileNames, string proBanksDir)
 	{
@@ -197,8 +225,9 @@ internal class Program
 		// 4. Clean & Register Libraries
 		string libBanks = null;
 		bool fullRun = args.Any((string a) => a.Equals("--full", StringComparison.OrdinalIgnoreCase));
-		bool manifestExistsEarly = File.Exists(Path.Combine(path, "Engine", "compile_manifest.json"));
-		bool destructiveRun = fullRun || !manifestExistsEarly;
+		// Only an explicit --full may delete anything. A fresh clone without a manifest
+		// used to take this path and wipe the operator's Banks and playlists.
+		bool destructiveRun = fullRun;
 		if (proPresenterDir != null && Directory.Exists(Path.Combine(proPresenterDir, "Libraries")))
 		{
 			string text2 = Path.Combine(proPresenterDir, "Libraries");
@@ -226,7 +255,8 @@ internal class Program
 				Directory.CreateDirectory(libBanks);
 				foreach (string path4 in Directory.GetFiles(libBanks, "*.pro"))
 				{
-					try { File.Delete(path4); } catch { }
+					try { File.Delete(path4); }
+					catch (Exception delEx) { Console.WriteLine($"  [WARN] Tidak dapat menghapus {path4}: {delEx.Message}"); }
 				}
 				Console.WriteLine("  -> Folder ProPresenter Library 'Banks' dibersihkan total.");
 			}
@@ -259,12 +289,12 @@ internal class Program
 			manifestPathEarly = Path.Combine(path, "Engine", "compile_manifest.json");
 		}
 		bool fullRebuildEarly = args.Any((string a) => a.Equals("--full", StringComparison.OrdinalIgnoreCase));
-		bool freshManifestEarly = !File.Exists(manifestPathEarly);
-		if (fullRebuildEarly || freshManifestEarly)
+		if (fullRebuildEarly)
 		{
 			foreach (string path6 in Directory.GetFiles(proBanksDir, "*.pro"))
 			{
-				try { File.Delete(path6); } catch { }
+				try { File.Delete(path6); }
+				catch (Exception delEx) { Console.WriteLine($"[WARN] Tidak dapat menghapus {path6}: {delEx.Message}"); }
 			}
 		}
 
@@ -372,8 +402,9 @@ internal class Program
 						}
 						removedOrphans++;
 					}
-					catch
+					catch (Exception delEx)
 					{
+						Console.WriteLine($"[WARN] Tidak dapat menghapus {orphan}: {delEx.Message}");
 					}
 				}
 			}
@@ -447,8 +478,9 @@ internal class Program
 					break;
 				}
 			}
-			catch
+			catch (Exception regEx)
 			{
+				Console.WriteLine($"[WARN] Gagal membaca metadata Library ({metaFile}): {regEx.Message}");
 			}
 		}
 		string absoluteString = Path.Combine(proLibDir, "Banks");
@@ -467,8 +499,8 @@ internal class Program
 		};
 		library.LibraryChildren.Libraries.Add(item);
 		byte[] bytes = library.ToByteArray();
-		File.WriteAllBytes(path, bytes);
-		File.WriteAllBytes(path2, bytes);
+		WriteAllBytesAtomic(path, bytes);
+		WriteAllBytesAtomic(path2, bytes);
 		Console.WriteLine($"  -> Metadata Library terdaftar: {library.LibraryChildren.Libraries.Count} library (termasuk 'Banks', library lain dipertahankan).");
 	}
 
@@ -490,7 +522,7 @@ internal class Program
 					Playlists = new Playlist.Types.PlaylistArray()
 				}
 			}.ToByteArray();
-			File.WriteAllBytes(playlistDocPath, bytes);
+			WriteAllBytesAtomic(playlistDocPath, bytes);
 			Console.WriteLine("  -> Berhasil membersihkan Playlist (Playlist Kosong).");
 		}
 		catch (Exception ex)
@@ -607,8 +639,9 @@ internal class Program
 					byte[] existingBytes = File.ReadAllBytes(playlistDocPath);
 					playlistDocument = PlaylistDocument.Parser.ParseFrom(existingBytes);
 				}
-				catch
+				catch (Exception playlistEx)
 				{
+					Console.WriteLine($"[WARN] Playlist tidak valid: {playlistEx.Message}");
 					playlistDocument = new PlaylistDocument();
 				}
 			}
@@ -681,7 +714,7 @@ internal class Program
 
 			playlistDocument.RootNode.Playlists.Playlists.Add(newPlaylist);
 			byte[] bytes = playlistDocument.ToByteArray();
-			File.WriteAllBytes(playlistDocPath, bytes);
+			WriteAllBytesAtomic(playlistDocPath, bytes);
 			Console.WriteLine($"[OK] Playlist '{playlistName}' berhasil didaftarkan ke ProPresenter ({songFileNames.Count} lagu)!");
 		}
 		catch (Exception ex)
@@ -822,8 +855,9 @@ internal class Program
 				return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(manifestPath, Encoding.UTF8)) ?? new Dictionary<string, string>();
 			}
 		}
-		catch
+		catch (Exception manifestEx)
 		{
+			Console.WriteLine($"[WARN] Manifest tidak terbaca ({manifestPath}): {manifestEx.Message}");
 		}
 		return new Dictionary<string, string>();
 	}
@@ -973,7 +1007,14 @@ internal class Program
 	{
 		lock (s_themeLock)
 		{
+			// Every cached value belongs to the previous template; leaving the typography
+			// behind made /api/themes report stale font data after a theme switch.
 			s_baseSlideTemplate = null;
+			s_appInfo = null;
+			s_tplFont = "CMGSans-Bold";
+			s_tplFontPt = 67.0;
+			s_tplBold = true;
+			s_tplFile = "";
 		}
 	}
 
@@ -1014,7 +1055,10 @@ internal class Program
 			var sm = Regex.Match(rtf, @"\\fs(\d+)");
 			if (sm.Success) pt = int.Parse(sm.Groups[1].Value) / 2.0;
 		}
-		catch { }
+		catch (Exception ex)
+		{
+			Console.WriteLine($"[WARN] Tidak dapat membaca tipografi RTF dari tema: {ex.Message}");
+		}
 		return (font, pt, bold);
 	}
 
@@ -1042,7 +1086,10 @@ internal class Program
 							.ToList();
 						candidateThemeFiles.AddRange(ordered);
 					}
-					catch { }
+					catch (Exception ex)
+					{
+						Console.WriteLine($"[WARN] Gagal memindai folder Themes ProPresenter: {ex.Message}");
+					}
 				}
 			}
 
@@ -1225,7 +1272,10 @@ internal class Program
 					File.Delete(f);
 					deletedSongs++;
 				}
-				catch { }
+				catch (Exception delEx)
+				{
+					Console.WriteLine($"[WARN] Tidak dapat menghapus {f}: {delEx.Message}");
+				}
 			}
 		}
 
@@ -1242,10 +1292,13 @@ internal class Program
 				{
 					clearedPlaylists = doc.RootNode.Playlists.Playlists.Count;
 					doc.RootNode.Playlists.Playlists.Clear();
-					File.WriteAllBytes(playlistDoc, doc.ToByteArray());
+					WriteAllBytesAtomic(playlistDoc, doc.ToByteArray());
 				}
 			}
-			catch { }
+			catch (Exception plEx)
+			{
+				Console.WriteLine($"[WARN] Reset playlist gagal: {plEx.Message}");
+			}
 		}
 
 		Console.WriteLine($"[CLEAN] Selesai: {deletedSongs} file .pro dibersihkan dari Libraries/Banks, {clearedPlaylists} playlist direset dari Playlists/Library.");
@@ -1342,7 +1395,7 @@ internal class Program
 			presentation.CueGroups.Add(cueGroup);
 		}
 		byte[] bytes = presentation.ToByteArray();
-		File.WriteAllBytes(targetFile, bytes);
+		WriteAllBytesAtomic(targetFile, bytes);
 		return true;
 	}
 }

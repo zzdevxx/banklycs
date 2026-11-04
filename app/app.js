@@ -15,6 +15,8 @@
     rundown: [],
     activeCategory: 'ALL',
     searchTimeout: null,
+    searchSeq: 0,
+    lyricsSeq: 0,
     toastTimeout: null,
     banksCount: 0,
     chunkSize: 60,
@@ -129,6 +131,7 @@
     if (h.includes('PRE-CHORUS') || h.includes('PRECHORUS')) return 'group-pre-chorus';
     if (h.includes('BLANK') || h.includes('INTRO')) return 'group-blank';
     if (h.includes('ENDING') || h.includes('OUTRO') || h.includes('TAG')) return 'group-ending';
+    if (h.includes('INTERLUDE')) return 'group-intro';
     return 'group-verse';
   }
 
@@ -296,19 +299,37 @@
       state.propresenterDir = data.propresenter_dir || '';
       state.banksCount = data.banks_count || 0;
       updateSettingsStatusText();
+      updateAboutStats(data);
 
       if (data.catalog_stale) {
         try {
-          const r = await fetch('/api/reload');
+          // /api/reload is POST-only; a GET here silently returned 405 and the
+          // catalog stayed stale for the whole session.
+          const r = await fetch('/api/reload', { method: 'POST' });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
           const d = await r.json();
           state.allCount = d.total_songs || state.allCount;
-          loadSongs();
+          await loadSongs();
+          showToast('Katalog lagu dimuat ulang');
         } catch {
           showToast('Library berubah, gagal reload katalog');
         }
       }
     } catch {
       showToast('Engine offline: jalankan START.vbs');
+    }
+  }
+
+  // The About panel used to hardcode the catalog size, which drifted from the
+  // live database. Bind it to /api/status instead of trusting a literal.
+  function updateAboutStats(data) {
+    const songsEl = document.getElementById('about-stat-songs');
+    const dbEl = document.getElementById('about-stat-db');
+    if (songsEl && typeof data.total_songs === 'number') {
+      songsEl.textContent = data.total_songs.toLocaleString('id-ID');
+    }
+    if (dbEl && typeof data.db_size_bytes === 'number' && data.db_size_bytes > 0) {
+      dbEl.textContent = (data.db_size_bytes / (1024 * 1024)).toFixed(1) + ' MB';
     }
   }
 
@@ -332,10 +353,13 @@
       q = `${state.activeCategory} ${q}`;
     }
 
+    const seq = ++state.searchSeq;
     try {
       const url = `/api/songs?q=${encodeURIComponent(q)}&category=${encodeURIComponent(state.activeCategory)}&limit=300`;
       const res = await fetch(url);
       const data = await res.json();
+      // A slower earlier request must not overwrite a newer result set.
+      if (seq !== state.searchSeq) return;
       state.currentResults = data.songs || [];
       state.renderedCount = 0;
 
@@ -466,11 +490,15 @@
     inspectorArtistEl.textContent = song.artist ? `by ${song.artist}` : '';
     inspectorContentEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-sub-text">Loading slides...</p></div>';
 
+    const seq = ++state.lyricsSeq;
     try {
       const res = await fetch(`/api/lyrics?file=${encodeURIComponent(song.filename)}`);
       const data = await res.json();
+      // Rapid row clicks: only the last selection may paint the slide grid.
+      if (seq !== state.lyricsSeq || !state.selectedSong || state.selectedSong.filename !== song.filename) return;
       renderSlideGrid(data);
     } catch {
+      if (seq !== state.lyricsSeq) return;
       inspectorContentEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-sub-text">Gagal memuat slide presentasi</p></div>';
     }
   }
@@ -701,7 +729,10 @@
     try {
       const res = await fetch('/api/inject', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Banklycs-Inject': '1'
+        },
         body: JSON.stringify({
           name: playlistName,
           songs: songFileNames
@@ -754,7 +785,7 @@
         );
       }
     } catch {
-      showModal('Connection Error', '<div class="modal-status modal-status-error">Cannot connect to local engine at 127.0.0.1:5050.</div>');
+      showModal('Connection Error', `<div class="modal-status modal-status-error">Cannot connect to local engine at ${escapeHtml(location.host)}.</div>`);
     } finally {
       injectBtn.disabled = state.rundown.length === 0;
       injectBtn.setAttribute('aria-disabled', injectBtn.disabled ? 'true' : 'false');
@@ -1033,7 +1064,9 @@
     if (installFontBtn) {
       installFontBtn.addEventListener('click', async () => {
         try {
-          await fetch('/api/font/install');
+          const res = await fetch('/api/font/install', { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error('font launch failed');
           showToast('Membuka font installer di Windows...');
         } catch {
           showToast('File font tersedia di tools/fonts/CMGSans-Bold.ttf');
@@ -1046,8 +1079,12 @@
       cleanBanksBtn.addEventListener('click', async () => {
         if (window.confirm('Bersihkan seluruh presentasi .pro di folder Banks ProPresenter?')) {
           try {
-            const res = await fetch('/api/banks/clean', { method: 'POST' });
+            const res = await fetch('/api/banks/clean', {
+              method: 'POST',
+              headers: { 'X-Banklycs-Confirm': 'clean-banks' }
+            });
             const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
             state.banksCount = 0;
             updateSettingsStatusText();
             showToast(data.message || 'Folder Banks dibersihkan');
@@ -1062,7 +1099,9 @@
     if (openBanksBtn) {
       openBanksBtn.addEventListener('click', async () => {
         try {
-          await fetch('/api/banks/open');
+          const res = await fetch('/api/banks/open', { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error('open failed');
           showToast('Membuka folder Libraries/Banks di Explorer...');
         } catch {
           showToast('Folder Libraries/Banks tidak ditemukan');

@@ -11,9 +11,9 @@
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│             database/banklycs.db (46 MB)            │
+│             database/banklycs.db (61 MB)            │
 │  - 24.520 Lagu Terkurasi dalam 1 File Database SQLite  │
-│  - FTS5 Full-Text Search Virtual Table                 │
+│  - songs_fts (FTS5) untuk audit; runtime pakai RAM      │
 │  - Zero Filesystem Bloat / Zero NTFS Overhead          │
 └───────────────────────────┬────────────────────────────┘
                             │
@@ -56,8 +56,8 @@ Sebelumnya, repositori menyimpan 20.301 file `.txt` dan 20.301 file `.pro` (tota
 3. **ProPresenter Overload**: Memuat 20.000 presentasi sekaligus di ProPresenter menyebabkan startup lambat dan potensi crash.
 
 **Dengan Arsitektur Baru**:
-1. **Single Database File (`banklycs.db`)**: Seluruh 20.301 lagu hanya berukuran **~28.9 MB**.
-2. 25.904 → kini **24.520 lagu** setelah dedup & sanitasi filename NTFS 2026-11-04. Sisa 46 MB.
+1. **Single Database File (`banklycs.db`)**: Seluruh 24.520 lagu berada dalam satu file **~61 MB** (61.415.424 byte).
+2. 25.904 → kini **24.520 lagu** setelah dedup & sanitasi filename NTFS 2026-11-04.
 3. **Kompilasi Realtime**: Protobuf serializer C# sangat cepat (<1 ms per lagu). Mengompilasi 5–10 lagu saat klik tombol "INJECT" hanya butuh waktu ~5 ms, sehingga tidak perlu menyimpan file `.pro` yang tidak terpakai di harddisk.
 4. **ProPresenter Tetap Ringan**: ProPresenter hanya memuat lagu-lagu ibadah aktif di `Libraries/Banks/`.
 

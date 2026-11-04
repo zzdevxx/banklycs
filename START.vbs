@@ -15,7 +15,7 @@ If Not objWMIService Is Nothing Then
         If colProcesses.Count > 0 Then isServerRunning = True
     End If
 
-    Set colEdge = objWMIService.ExecQuery("Select * from Win32_Process Where Name = 'msedge.exe' and CommandLine Like '%127.0.0.1:5050%'")
+    Set colEdge = objWMIService.ExecQuery("Select * from Win32_Process Where Name = 'msedge.exe' and CommandLine Like '%127.0.0.1:505%'")
     If Not colEdge Is Nothing Then
         If colEdge.Count > 0 Then isEdgeRunning = True
     End If
@@ -27,11 +27,27 @@ If Not isServerRunning Then
     WScript.Sleep 600
 End If
 
+' 2b. Ask the engine which port it actually bound (it scans 5050-5055)
+port = "5050"
+portFile = strPath & "\engine\last_port.txt"
+If fso.FileExists(portFile) Then
+    Set ts = fso.OpenTextFile(portFile, 1, False)
+    If Err.Number = 0 Then
+        candidate = Trim(ts.ReadLine)
+        ts.Close
+        If IsNumeric(candidate) Then
+            If CInt(candidate) > 0 Then port = CStr(CInt(candidate))
+        End If
+    End If
+    On Error Resume Next
+End If
+serverUrl = "http://127.0.0.1:" & port
+
 ' 3. Bring existing window to focus or launch single instance
 If isEdgeRunning Then
     WshShell.AppActivate "ProPresenter7 - Lyric Injector"
 Else
-    WshShell.Run "msedge.exe --app=http://127.0.0.1:5050 --start-maximized", 3, False
+    WshShell.Run "msedge.exe --app=" & serverUrl & " --start-maximized", 3, False
 End If
 
 Set WshShell = Nothing

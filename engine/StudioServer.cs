@@ -65,6 +65,22 @@ namespace Banklycs
             @"^(BLANK|INTRO|VERSE(\s+\d+)?|PRE[\s\-]*CHORUS(\s+\d+)?|CHORUS(\s+\d+)?|BRIDGE(\s+\d+)?|TAG|INTERLUDE|ENDING|OUTRO)$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+        // A plain StartsWith() prefix check accepts a sibling directory whose name
+        // merely begins with the root ("...\app" vs "...\app2"). Compare against the
+        // root with a trailing separator instead.
+        internal static bool IsUnder(string candidateFullPath, string rootFullPath)
+        {
+            if (string.IsNullOrEmpty(candidateFullPath) || string.IsNullOrEmpty(rootFullPath)) return false;
+            string root = Path.GetFullPath(rootFullPath);
+            if (!root.EndsWith(Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal))
+            {
+                root += Path.DirectorySeparatorChar;
+            }
+            string candidate = Path.GetFullPath(candidateFullPath);
+            return candidate.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+                || candidate.Equals(root.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase);
+        }
+
         public static string SanitizeDiskFileName(string name)
         {
             if (string.IsNullOrWhiteSpace(name)) return "Presentation";
@@ -253,17 +269,19 @@ namespace Banklycs
 
                 if (File.Exists(srcTemplate))
                 {
+                    // The official template ships Praise/Worship/Bible. A copy is only needed
+                    // when the file is missing, unreadable, or missing a slide the template has.
                     bool needCopy = !File.Exists(banklycsThemeFile);
-                    if (!needCopy && File.Exists(banklycsThemeFile))
+                    if (!needCopy)
                     {
                         try
                         {
                             byte[] bBytes = File.ReadAllBytes(banklycsThemeFile);
                             var bDoc = Template.Types.Document.Parser.ParseFrom(bBytes);
-                            if (bDoc.Slides.Any(s => s.Name.Equals("Bible", StringComparison.OrdinalIgnoreCase)))
-                            {
-                                needCopy = true;
-                            }
+                            byte[] sBytes = File.ReadAllBytes(srcTemplate);
+                            var sDoc = Template.Types.Document.Parser.ParseFrom(sBytes);
+                            needCopy = sDoc.Slides.Any(src =>
+                                !bDoc.Slides.Any(s => s.Name.Equals(src.Name, StringComparison.OrdinalIgnoreCase)));
                         }
                         catch (Exception ex)
                         {
@@ -275,6 +293,12 @@ namespace Banklycs
                     if (needCopy)
                     {
                         Directory.CreateDirectory(banklycsThemeDir);
+                        if (File.Exists(banklycsThemeFile))
+                        {
+                            string backup = banklycsThemeFile + ".bak-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+                            File.Copy(banklycsThemeFile, backup, overwrite: false);
+                            Console.WriteLine($"[THEME] Backup tema lama: {backup}");
+                        }
                         File.Copy(srcTemplate, banklycsThemeFile, overwrite: true);
                         Console.WriteLine($"[THEME] Auto-injected official Banklycs Theme to ProPresenter: {banklycsThemeFile}");
                     }
@@ -291,11 +315,15 @@ namespace Banklycs
                         bool hasPraiseOrWorship = zzDoc.Slides.Any(s => s.Name.Contains("Praise") || s.Name.Contains("Worship"));
                         if (hasPraiseOrWorship)
                         {
+                            string zzBackup = zzThemeFile + ".bak-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+                            File.Copy(zzThemeFile, zzBackup, overwrite: false);
                             var keepZz = zzDoc.Slides.Where(s => !s.Name.Contains("Praise") && !s.Name.Contains("Worship")).ToList();
                             zzDoc.Slides.Clear();
                             zzDoc.Slides.AddRange(keepZz);
-                            File.WriteAllBytes(zzThemeFile, zzDoc.ToByteArray());
-                            Console.WriteLine($"[THEME] Pruned duplicate Praise/Worship from zz Theme, leaving Bible slide.");
+                            // Atomic: ProPresenter holds this file open, so a partial write
+                            // would leave the playlist/theme document unreadable.
+                            Program.WriteAllBytesAtomic(zzThemeFile, zzDoc.ToByteArray());
+                            Console.WriteLine($"[THEME] Pruned duplicate Praise/Worship from zz Theme (backup: {zzBackup}).");
                         }
                     }
                     catch (Exception ex)
@@ -354,7 +382,27 @@ namespace Banklycs
             if (listener == null || !listener.IsListening)
             {
                 Console.WriteLine("[ERROR] Tidak dapat membuka port HTTP untuk Studio Console!");
+                // Tell the launcher the truth so it does not open a browser at a dead port.
+                try
+                {
+                    File.WriteAllText(Path.Combine(ProjectRoot, "engine", "last_port.txt"), "0");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[WARN] Tidak dapat menulis last_port.txt: {ex.Message}");
+                }
+                Environment.ExitCode = 1;
                 return;
+            }
+
+            // Handshake for START.vbs: the port may not be 5050 when it is occupied.
+            try
+            {
+                File.WriteAllText(Path.Combine(ProjectRoot, "engine", "last_port.txt"), port.ToString());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARN] Tidak dapat menulis last_port.txt: {ex.Message}");
             }
 
             string serverUrl = $"http://127.0.0.1:{port}";
@@ -380,8 +428,9 @@ namespace Banklycs
                             UseShellExecute = true
                         });
                     }
-                    catch
+                    catch (Exception edgeEx)
                     {
+                        Console.WriteLine($"[WARN] Edge app-mode launch failed: {edgeEx.Message}");
                         try
                         {
                             Process.Start(new ProcessStartInfo
@@ -441,6 +490,8 @@ namespace Banklycs
             }
         }
 
+        // RFC 9457 Problem Details: application/problem+json and a stable `instance`
+        // derived from the request path, so a client can tell two failures apart.
         private static void SendProblem(HttpListenerRequest req, HttpListenerResponse res, int status, string title, string detail)
         {
             var problem = new
@@ -448,9 +499,10 @@ namespace Banklycs
                 type = $"https://httpstatuses.io/{status}",
                 title = title,
                 status = status,
-                detail = detail
+                detail = detail,
+                instance = req.Url?.AbsolutePath ?? "/"
             };
-            SendJson(req, res, problem, status);
+            SendJson(req, res, problem, status, "application/problem+json; charset=utf-8");
         }
 
         private static void ProcessRequest(HttpListenerContext context)
@@ -509,9 +561,17 @@ namespace Banklycs
                             }
                         }
 
+                        long dbSizeBytes = 0;
+                        try
+                        {
+                            if (File.Exists(DatabasePath)) dbSizeBytes = new FileInfo(DatabasePath).Length;
+                        }
+                        catch (Exception ex) { Console.WriteLine($"[WARN] DB size read error: {ex.Message}"); }
+
                         var statusData = new
                         {
                             total_songs = Catalog.Count,
+                            db_size_bytes = dbSizeBytes,
                             catalog_loaded_at = CatalogLoadedAt == DateTime.MinValue ? "" : CatalogLoadedAt.ToString("o"),
                             catalog_db_mtime = dbMtime == DateTime.MinValue ? "" : dbMtime.ToString("o"),
                             catalog_stale = dbMtime > CatalogLoadedAt,
@@ -694,9 +754,10 @@ namespace Banklycs
                                 using var conn = new SqliteConnection(connStr);
                                 conn.Open();
                                 using var cmd = conn.CreateCommand();
-                                cmd.CommandText = "SELECT filename, title, content FROM songs WHERE filename = @f OR filename = @fExact LIMIT 1;";
+                                // Exact filename only: matching on title returned the wrong
+                                // song for the 1,459 titles that exist in more than one hymnal.
+                                cmd.CommandText = "SELECT filename, title, content FROM songs WHERE filename = @f LIMIT 1;";
                                 cmd.Parameters.AddWithValue("@f", filename.EndsWith(".txt", StringComparison.OrdinalIgnoreCase) ? filename : filename + ".txt");
-                                cmd.Parameters.AddWithValue("@fExact", filename);
                                 using var reader = cmd.ExecuteReader();
                                 if (reader.Read())
                                 {
@@ -720,7 +781,7 @@ namespace Banklycs
                                 string targetFile = Path.GetFullPath(Path.Combine(DatabaseDir, safeBase));
                                 string dbDirFull = Path.GetFullPath(DatabaseDir);
 
-                                if (targetFile.StartsWith(dbDirFull, StringComparison.OrdinalIgnoreCase) && File.Exists(targetFile))
+                                if (IsUnder(targetFile, dbDirFull) && File.Exists(targetFile))
                                 {
                                     content = File.ReadAllText(targetFile, Encoding.UTF8);
                                 }
@@ -884,6 +945,14 @@ namespace Banklycs
 
                     if (rawPath.Equals("/api/banks/clean", StringComparison.OrdinalIgnoreCase))
                     {
+                        // Destructive and irreversible. A same-origin-only CSRF token keeps
+                        // another localhost page from wiping the operator's library.
+                        if (!string.Equals(req.Headers["X-Banklycs-Confirm"], "clean-banks", StringComparison.Ordinal))
+                        {
+                            SendProblem(req, res, 428, "Precondition Required", "Header X-Banklycs-Confirm: clean-banks wajib disertakan.");
+                            return;
+                        }
+
                         lock (InjectLock)
                         {
                             int deleted = 0;
@@ -910,7 +979,9 @@ namespace Banklycs
                                         {
                                             clearedPlaylists = doc.RootNode.Playlists.Playlists.Count;
                                             doc.RootNode.Playlists.Playlists.Clear();
-                                            File.WriteAllBytes(playlistDoc, doc.ToByteArray());
+                                            // ProPresenter may hold this file open; a partial in-place
+                                            // write would corrupt the whole playlist document.
+                                            Program.WriteAllBytesAtomic(playlistDoc, doc.ToByteArray());
                                         }
                                     }
                                     catch (Exception ex)
@@ -964,6 +1035,12 @@ namespace Banklycs
 
                     if (rawPath.Equals("/api/inject", StringComparison.OrdinalIgnoreCase))
                     {
+                        if (!string.Equals(req.Headers["X-Banklycs-Inject"], "1", StringComparison.Ordinal))
+                        {
+                            SendProblem(req, res, 428, "Precondition Required", "Header X-Banklycs-Inject: 1 wajib disertakan.");
+                            return;
+                        }
+
                         string? body = ReadBodyWithLimit(req, 1_000_000);
                         if (body == null)
                         {
@@ -1012,14 +1089,15 @@ namespace Banklycs
                             try
                             {
                                 string target = Path.GetFullPath(Path.Combine(libBanks, safeProbe + ".pro"));
-                                if (!target.StartsWith(libBanks, StringComparison.OrdinalIgnoreCase))
+                                if (!IsUnder(target, libBanks))
                                 {
                                     SendProblem(req, res, 400, "Invalid Song Name", $"Nama lagu tidak valid: {raw}");
                                     return;
                                 }
                             }
-                            catch
+                            catch (Exception pathEx)
                             {
+                                Console.WriteLine($"[WARN] Nama lagu tidak dapat diresolusi ({raw}): {pathEx.Message}");
                                 SendProblem(req, res, 400, "Invalid Song Name", $"Nama lagu tidak valid: {raw}");
                                 return;
                             }
@@ -1075,7 +1153,9 @@ namespace Banklycs
                                     if (dbConn != null)
                                     {
                                         using var cmd = dbConn.CreateCommand();
-                                        cmd.CommandText = "SELECT title, content, filename FROM songs WHERE filename = @f OR filename = @safeF ORDER BY id LIMIT 1;";
+                                        // The exact catalog filename wins; the sanitized form is
+                                        // only a legacy fallback, never a silent override.
+                                        cmd.CommandText = "SELECT title, content, filename FROM songs WHERE filename = @f OR filename = @safeF ORDER BY (filename = @f) DESC, id LIMIT 1;";
                                         cmd.Parameters.AddWithValue("@f", cleanName + ".txt");
                                         cmd.Parameters.AddWithValue("@safeF", safeBaseName + ".txt");
                                         using var r = cmd.ExecuteReader();
@@ -1097,7 +1177,7 @@ namespace Banklycs
                                         {
                                             string txtFile = Path.GetFullPath(Path.Combine(DatabaseDir, safeBaseName + ".txt"));
                                             string dbDirFull = Path.GetFullPath(DatabaseDir);
-                                            if (txtFile.StartsWith(dbDirFull, StringComparison.OrdinalIgnoreCase) && File.Exists(txtFile))
+                                            if (IsUnder(txtFile, dbDirFull) && File.Exists(txtFile))
                                             {
                                                 songContent = File.ReadAllText(txtFile, Encoding.UTF8);
                                                 compiled = Program.CompileAndSaveSong(songTitle, songContent, dstFile, ProjectRoot, ProPresenterDir);
@@ -1195,7 +1275,7 @@ namespace Banklycs
             string fullPath = Path.GetFullPath(Path.Combine(AppDir, relPath));
             string appDirFull = Path.GetFullPath(AppDir);
 
-            if (!fullPath.StartsWith(appDirFull, StringComparison.OrdinalIgnoreCase) || !File.Exists(fullPath))
+            if (!IsUnder(fullPath, appDirFull) || !File.Exists(fullPath))
             {
                 SendProblem(req, res, 404, "File Not Found", "Berkas tidak ditemukan.");
                 return;
@@ -1220,6 +1300,13 @@ namespace Banklycs
             res.ContentType = contentType;
             res.ContentLength64 = bytes.Length;
             res.StatusCode = 200;
+            // Local console: no framing, no MIME sniffing, no remote origins.
+            // Inline styles stay allowed for the --pro-scale custom property;
+            // the favicon is a data: SVG.
+            res.Headers.Add("X-Content-Type-Options", "nosniff");
+            res.Headers.Add("X-Frame-Options", "DENY");
+            res.Headers.Add("Referrer-Policy", "no-referrer");
+            res.Headers.Add("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'");
 
             if (!req.HttpMethod.Equals("HEAD", StringComparison.OrdinalIgnoreCase))
             {
@@ -1228,7 +1315,7 @@ namespace Banklycs
             res.Close();
         }
 
-        private static void SendJson(HttpListenerRequest req, HttpListenerResponse res, object data, int statusCode = 200)
+        private static void SendJson(HttpListenerRequest req, HttpListenerResponse res, object data, int statusCode = 200, string contentType = "application/json; charset=utf-8")
         {
             string json = JsonSerializer.Serialize(data, new JsonSerializerOptions
             {
@@ -1236,7 +1323,7 @@ namespace Banklycs
             });
             byte[] bytes = Encoding.UTF8.GetBytes(json);
 
-            res.ContentType = "application/json; charset=utf-8";
+            res.ContentType = contentType;
             res.ContentLength64 = bytes.Length;
             res.StatusCode = statusCode;
 

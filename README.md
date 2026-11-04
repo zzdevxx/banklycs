@@ -1,7 +1,7 @@
 # 🎶 Banklycs — ProPresenter 7 Worship Lyrics Engine & Database
 
 [![Catalog](https://img.shields.io/badge/Catalog-24%2C520%20Songs-blue?style=flat-square&logo=musicbrainz)](https://github.com/zzdevxx/banklycs)
-[![Database](https://img.shields.io/badge/Database-SQLite%20FTS5%20(46MB)-success?style=flat-square&logo=sqlite)](https://github.com/zzdevxx/banklycs)
+[![Database](https://img.shields.io/badge/Database-SQLite%20(61MB)-success?style=flat-square&logo=sqlite)](https://github.com/zzdevxx/banklycs)
 [![Target](https://img.shields.io/badge/Target-ProPresenter%207-orange?style=flat-square)](https://renewedvision.com/propresenter/)
 [![Live Portal](https://img.shields.io/badge/Live%20Portal-GitHub%20Pages-brightgreen?style=flat-square&logo=githubpages)](https://zzdevxx.github.io/banklycs-download/)
 [![Engine](https://img.shields.io/badge/Engine-C%23%20.NET%208%20Native-purple?style=flat-square&logo=dotnet)](https://github.com/zzdevxx/banklycs)
@@ -28,9 +28,9 @@
     - **NNBT** (Nyanyian Baru Bagi Tuhan) — 46 lagu
     - **Kidung Pasamuwan Jawi** — 4 lagu
 - **Arsitektur Single-File Database (`database/banklycs.db`)**:
-  - Semua 24.520 lagu tersimpan dalam **1 file SQLite tunggal (~46 MB)** lengkap dengan indeks **FTS5 (Full-Text Search)**.
+  - Semua 24.520 lagu tersimpan dalam **1 file SQLite tunggal (~61 MB)**.
   - Tidak ada lagi puluhan ribu file kecil yang memperlambat Windows NTFS atau proses transfer flashdisk USB.
-  - Pencarian lirik super cepat (<0.4 milidetik) langsung dari RAM/FTS5.
+  - Katalog lengkap dimuat ke RAM saat start (~0,3 detik) lalu difilter dengan pencocokan substring per token — tidak ada round-trip SQLite per ketikan. Tabel `songs_fts` (FTS5) tetap ada dan dipakai oleh `tools/audit_cleanliness.py`, bukan oleh server.
 - **Kompilasi On-Demand (<1 ms per lagu)**:
   - File biner ProPresenter (`.pro`) dikompilasi secara *in-memory* hanya saat operator mengklik **INJECT**.
   - ProPresenter tetap bersih, ringan, dan **bebas lag/crash** (hanya menyimpan lagu-lagu ibadah aktif di disk).
@@ -73,7 +73,7 @@ START.vbs   (1-Klik Senyap untuk Operator — 100% tanpa jendela terminal CMD)
 banklycs/
 ├── START.vbs              <- Launcher 1-klik untuk operator gereja (senyap, 0 CMD)
 ├── database/
-│   └── banklycs.db        <- Master SQLite DB seluruh 24.556 lagu (~44 MB, FTS5)
+│   └── banklycs.db        <- Master SQLite DB seluruh 24.520 lagu (~61 MB)
 ├── app/                   <- Antarmuka Web GUI Studio Console (HTML, CSS, JS)
 │   ├── index.html
 │   ├── style.css
