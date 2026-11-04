@@ -1,13 +1,13 @@
 # 🎶 Banklycs — ProPresenter 7 Worship Lyrics Engine & Database
 
-[![Catalog](https://img.shields.io/badge/Catalog-24%2C556%20Songs-blue?style=flat-square&logo=musicbrainz)](https://github.com/zzdevxx/banklycs)
-[![Database](https://img.shields.io/badge/Database-SQLite%20FTS5%20(44MB)-success?style=flat-square&logo=sqlite)](https://github.com/zzdevxx/banklycs)
+[![Catalog](https://img.shields.io/badge/Catalog-24%2C520%20Songs-blue?style=flat-square&logo=musicbrainz)](https://github.com/zzdevxx/banklycs)
+[![Database](https://img.shields.io/badge/Database-SQLite%20FTS5%20(46MB)-success?style=flat-square&logo=sqlite)](https://github.com/zzdevxx/banklycs)
 [![Target](https://img.shields.io/badge/Target-ProPresenter%207-orange?style=flat-square)](https://renewedvision.com/propresenter/)
 [![Live Portal](https://img.shields.io/badge/Live%20Portal-GitHub%20Pages-brightgreen?style=flat-square&logo=githubpages)](https://zzdevxx.github.io/banklycs-download/)
 [![Engine](https://img.shields.io/badge/Engine-C%23%20.NET%208%20Native-purple?style=flat-square&logo=dotnet)](https://github.com/zzdevxx/banklycs)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
-> **Koleksi 24.556 Lagu Rohani & Himne Siap Tayang untuk ProPresenter 7.**  
+> **Koleksi 24.520 Lagu Rohani & Himne Siap Tayang untuk ProPresenter 7.**  
 > Dirancang khusus untuk tim multimedia gereja, operator proyektor, dan worship leader agar **tidak perlu lagi mencari & *copy-paste* lirik dari browser saat ibadah.**  
 > 🌐 **Live Portal & Web Simulator:** [https://zzdevxx.github.io/banklycs-download/](https://zzdevxx.github.io/banklycs-download/)
 
@@ -15,11 +15,11 @@
 
 ## ⚡ Fitur Utama
 
-- **24.556 Lagu Terkurasi & Siap Tayang (100% Zero-Duplicate)**:
+- **24.520 Lagu Terkurasi & Siap Tayang (100% Zero-Duplicate)**:
   - **Praise & Worship Indonesia (14.586 lagu)**: GMS Live, JPCC Worship, Symphony Worship, NDC Worship, Bethel, Sari Simorangkir, Franky Sihombing, dll.
-  - **English Contemporary & Classic Hymns (5.961 lagu)**: Hillsong Worship, Elevation Worship, Bethel Music, Planetshakers, Chris Tomlin, Matt Redman, Songs of Fellowship, Martin Luther, John Newton, dll.
+  - **English Contemporary & Classic Hymns (5.956 lagu)**: Hillsong Worship, Elevation Worship, Bethel Music, Planetshakers, Chris Tomlin, Matt Redman, Songs of Fellowship, Martin Luther, John Newton, dll.
   - **Buku Nyanyian & Himne Gereja Lengkap**:
-    - **KJ** (Kidung Jemaat) — 1.127 lagu
+    - **KJ** (Kidung Jemaat) — 1.096 lagu
     - **BE** (Buku Ende HKBP Batak) — 844 lagu
     - **KK** (Kidung Keesaan) — 765 lagu
     - **KLIK** (Kumpulan Lagu Ibadah Kreatif) — 461 lagu
@@ -28,7 +28,7 @@
     - **NNBT** (Nyanyian Baru Bagi Tuhan) — 46 lagu
     - **Kidung Pasamuwan Jawi** — 4 lagu
 - **Arsitektur Single-File Database (`database/banklycs.db`)**:
-  - Semua 24.556 lagu tersimpan dalam **1 file SQLite tunggal (~44 MB)** lengkap dengan indeks **FTS5 (Full-Text Search)**.
+  - Semua 24.520 lagu tersimpan dalam **1 file SQLite tunggal (~46 MB)** lengkap dengan indeks **FTS5 (Full-Text Search)**.
   - Tidak ada lagi puluhan ribu file kecil yang memperlambat Windows NTFS atau proses transfer flashdisk USB.
   - Pencarian lirik super cepat (<0.4 milidetik) langsung dari RAM/FTS5.
 - **Kompilasi On-Demand (<1 ms per lagu)**:
@@ -100,7 +100,7 @@ banklycs/
 
 ## 🛠️ Perintah untuk Developer / Maintainer
 
-Mengekspor seluruh 24.556 lagu kembali menjadi file teks biasa (`.txt`):
+Mengekspor seluruh 24.520 lagu kembali menjadi file teks biasa (`.txt`):
 ```powershell
 engine\banklycs.exe export-txt [folder_tujuan]
 # Contoh: engine\banklycs.exe export-txt database\txt

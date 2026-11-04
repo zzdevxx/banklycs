@@ -16,19 +16,25 @@
     activeCategory: 'ALL',
     searchTimeout: null,
     toastTimeout: null,
-    isLargeFont: false,
-    chunkSize: 60
+    banksCount: 0,
+    chunkSize: 60,
+    propresenterDir: '',
+    savedScale: 1.20,
+    tempScale: 1.20,
+    activeTheme: 'Lyric - Praise',
+    themesList: [],
+    lastFocusedBeforeModal: null,
+    activeDescendantId: ''
   };
 
   // DOM Elements
-  const statusIndicator = document.getElementById('status-indicator');
-  const statusText = document.getElementById('status-text');
   const resultsCount = document.getElementById('results-count');
   const rundownCount = document.getElementById('rundown-count');
   const searchInput = document.getElementById('search-input');
   const clearSearchBtn = document.getElementById('clear-search-btn');
-  const filterTabs = document.querySelectorAll('.pro-tab');
+  const filterTabs = Array.from(document.querySelectorAll('.pro-tab'));
   const songListEl = document.getElementById('song-list');
+  const libraryPanel = document.getElementById('library-panel');
   const inspectorCategoryEl = document.getElementById('inspector-category');
   const inspectorTitleEl = document.getElementById('inspector-song-title');
   const inspectorArtistEl = document.getElementById('inspector-artist');
@@ -39,40 +45,77 @@
   const clearRundownBtn = document.getElementById('clear-rundown-btn');
   const copyWaBtn = document.getElementById('copy-wa-btn');
   const injectBtn = document.getElementById('inject-btn');
+
+  // Settings Modal Elements
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsOverlay = document.getElementById('settings-overlay');
+  const settingsCloseBtn = document.getElementById('settings-close-btn');
+  const settingsCancelBtn = document.getElementById('settings-cancel-btn');
+  const settingsSaveBtn = document.getElementById('settings-save-btn');
+  const scaleMinusBtn = document.getElementById('scale-minus-btn');
+  const scalePlusBtn = document.getElementById('scale-plus-btn');
+  const scaleSlider = document.getElementById('scale-slider');
+  const settingsScaleBadge = document.getElementById('settings-scale-badge');
+  const settingsThemeSelect = document.getElementById('settings-theme-select');
+  const previewThemeTag = document.getElementById('preview-theme-tag');
+  const settingsProPath = document.getElementById('settings-pro-path');
+
+  // About Modal Elements
+  const aboutBtn = document.getElementById('about-btn');
+  const aboutOverlay = document.getElementById('about-overlay');
+  const aboutCloseBtn = document.getElementById('about-close-btn');
+  const aboutOkBtn = document.getElementById('about-ok-btn');
+
+  // Main Modal & Toast
   const modalOverlay = document.getElementById('modal-overlay');
   const modalTitle = document.getElementById('modal-title');
   const modalBody = document.getElementById('modal-body');
   const modalCloseBtn = document.getElementById('modal-close-btn');
   const modalOkBtn = document.getElementById('modal-ok-btn');
-  const zoomInBtn = document.getElementById('zoom-in-btn');
-  const zoomOutBtn = document.getElementById('zoom-out-btn');
-  const zoomLevelLabel = document.getElementById('zoom-level-label');
-  const fullscreenToggleBtn = document.getElementById('fullscreen-toggle');
   const toastEl = document.getElementById('toast');
+  const mainWorkspaceEl = document.querySelector('.pro-workspace');
+  const mainToolbarEl = document.querySelector('.pro-toolbar');
 
-  // Scale presets (Default: 1.20)
-  const SCALE_STEPS = [1.0, 1.1, 1.2, 1.35, 1.5];
   let currentScale = 1.2;
+  // Slider-aligned steps (100..150, step 5) used by keyboard zoom shortcuts.
+  const SCALE_STEPS = [1.0, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.4, 1.45, 1.5];
 
   function applyScale(scale) {
     currentScale = Math.round(scale * 100) / 100;
     document.documentElement.style.setProperty('--pro-scale', currentScale);
-    if (zoomLevelLabel) {
-      zoomLevelLabel.textContent = Math.round(currentScale * 100) + '%';
+    if (settingsScaleBadge) {
+      settingsScaleBadge.textContent = Math.round(currentScale * 100) + '%';
     }
+    if (scaleSlider) {
+      const pct = Math.round(currentScale * 100);
+      scaleSlider.value = pct;
+      scaleSlider.setAttribute('aria-valuetext', `${pct} persen`);
+    }
+    syncStepperBounds();
     try {
       localStorage.setItem('pro7_scale', currentScale.toString());
     } catch {
-      // Ignore
+      // Storage unavailable (private mode); the in-memory scale still applies.
+    }
+  }
+
+  function syncStepperBounds() {
+    const pct = Math.round(currentScale * 100);
+    if (scaleMinusBtn) {
+      scaleMinusBtn.disabled = pct <= 100;
+      scaleMinusBtn.setAttribute('aria-disabled', scaleMinusBtn.disabled ? 'true' : 'false');
+    }
+    if (scalePlusBtn) {
+      scalePlusBtn.disabled = pct >= 150;
+      scalePlusBtn.setAttribute('aria-disabled', scalePlusBtn.disabled ? 'true' : 'false');
     }
   }
 
   function changeScale(direction) {
-    let curIdx = SCALE_STEPS.findIndex(s => Math.abs(s - currentScale) < 0.05);
-    if (curIdx === -1) curIdx = 2;
-    let nextIdx = curIdx + direction;
-    if (nextIdx < 0) nextIdx = 0;
-    if (nextIdx >= SCALE_STEPS.length) nextIdx = SCALE_STEPS.length - 1;
+    let curIdx = SCALE_STEPS.findIndex(s => Math.abs(s - currentScale) < 0.026);
+    if (curIdx === -1) curIdx = SCALE_STEPS.findIndex(s => s >= currentScale);
+    if (curIdx === -1) curIdx = SCALE_STEPS.length - 1;
+    const nextIdx = Math.min(SCALE_STEPS.length - 1, Math.max(0, curIdx + direction));
     applyScale(SCALE_STEPS[nextIdx]);
     showToast(`Display Scale: ${Math.round(SCALE_STEPS[nextIdx] * 100)}%`);
   }
@@ -95,16 +138,18 @@
     setupDefaultPlaylistName();
     setupEventListeners();
     await checkStatus();
+    await loadThemes();
     loadSongs();
   }
 
   function loadPreferences() {
     try {
       const savedScale = parseFloat(localStorage.getItem('pro7_scale'));
-      if (savedScale && !isNaN(savedScale)) {
-        applyScale(savedScale);
-      } else {
-        applyScale(1.20);
+      applyScale(savedScale && !isNaN(savedScale) ? savedScale : 1.20);
+
+      const savedTheme = localStorage.getItem('pro7_theme');
+      if (savedTheme) {
+        state.activeTheme = savedTheme;
       }
 
       const savedRundown = localStorage.getItem('pro7_rundown');
@@ -121,7 +166,92 @@
         playlistNameInput.value = savedName;
       }
     } catch {
-      // Storage access blocked or unavailable
+      // Corrupt or unavailable localStorage: fall back to the defaults above.
+      applyScale(1.20);
+    }
+  }
+
+  async function loadThemes() {
+    try {
+      const res = await fetch('/api/themes');
+      const data = await res.json();
+      state.themesList = data.themes || [];
+      if (data.active_theme) {
+        state.activeTheme = data.active_theme;
+      }
+
+      const fontBadge = document.getElementById('settings-font-badge');
+      const installFontBtn = document.getElementById('install-font-btn');
+      if (fontBadge) {
+        if (data.cmg_font_installed) {
+          fontBadge.className = 'settings-tag-ok';
+          fontBadge.textContent = '✓ CMG Sans Terpasang';
+          if (installFontBtn) installFontBtn.classList.add('hidden');
+        } else {
+          fontBadge.className = 'settings-tag-warning';
+          fontBadge.textContent = '⚠ CMG Sans Belum Terpasang';
+          if (installFontBtn) installFontBtn.classList.remove('hidden');
+        }
+      }
+
+      if (settingsThemeSelect && state.themesList.length > 0) {
+        settingsThemeSelect.innerHTML = '';
+
+        const groups = {};
+        state.themesList.forEach(t => {
+          const g = t.group || 'Banklycs';
+          if (!groups[g]) groups[g] = [];
+          groups[g].push(t);
+        });
+
+        Object.keys(groups).forEach(gName => {
+          const optGroup = document.createElement('optgroup');
+          optGroup.label = gName === 'Banklycs' ? 'Banklycs (Official Stage Theme)' : `ProPresenter: ${gName}`;
+          groups[gName].forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.slide_name;
+            opt.textContent = `${t.slide_name} (1920×1080)`;
+            if (t.slide_name.toLowerCase() === state.activeTheme.toLowerCase()) {
+              opt.selected = true;
+            }
+            optGroup.appendChild(opt);
+          });
+          settingsThemeSelect.appendChild(optGroup);
+        });
+      }
+      updateThemePreview();
+    } catch {
+      // Themes endpoint offline: keep the static options already in the DOM.
+    }
+  }
+
+  function updateThemePreview() {
+    if (!previewThemeTag || !settingsThemeSelect) return;
+    const selected = settingsThemeSelect.value || state.activeTheme || 'Lyric - Praise';
+    const low = selected.toLowerCase();
+
+    const previewBox = document.querySelector('.preview-text-box');
+    const line1 = document.querySelector('.preview-line-1');
+    const line2 = document.querySelector('.preview-line-2');
+    const resTag = document.querySelector('.preview-res-tag');
+
+    previewThemeTag.textContent = selected.toUpperCase();
+
+    if (low.includes('worship')) {
+      if (previewBox) previewBox.className = 'preview-text-box font-worship';
+      if (line1) line1.textContent = 'Kudus, kudus, kuduslah Tuhan';
+      if (line2) line2.textContent = 'Bumi penuh kemuliaan-Mu';
+      if (resTag) resTag.textContent = 'Times New Roman • fs150';
+    } else if (low.includes('bible')) {
+      if (previewBox) previewBox.className = 'preview-text-box font-bible';
+      if (line1) line1.textContent = 'Sebab firman Allah hidup dan kuat,';
+      if (line2) line2.textContent = 'lebih tajam dari pedang bermata dua.';
+      if (resTag) resTag.textContent = 'Arial • fs100';
+    } else {
+      if (previewBox) previewBox.className = 'preview-text-box font-praise';
+      if (line1) line1.textContent = 'KAU ALLAH YANG BESAR';
+      if (line2) line2.textContent = 'AJAIB DAN BERKUASA';
+      if (resTag) resTag.textContent = 'CMGSans-Bold • fs134';
     }
   }
 
@@ -132,13 +262,13 @@
         localStorage.setItem('pro7_playlist_name', playlistNameInput.value.trim());
       }
     } catch {
-      // Ignore
+      // Quota or blocked storage: the rundown still lives in memory.
     }
   }
 
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
+      document.documentElement.requestFullscreen().catch(() => showToast('Fullscreen tidak tersedia'));
     } else {
       document.exitFullscreen().catch(() => {});
     }
@@ -163,42 +293,39 @@
       const res = await fetch('/api/status');
       const data = await res.json();
       state.allCount = data.total_songs || 0;
+      state.propresenterDir = data.propresenter_dir || '';
+      state.banksCount = data.banks_count || 0;
+      updateSettingsStatusText();
 
       if (data.catalog_stale) {
-        // Catalog in RAM predates the DB on disk (imports / edits happened after start).
-        // Old engine builds have no catalog_stale field -> guarded.
-        statusIndicator.className = 'pro-dot offline';
-        statusText.textContent = 'Library Updated - Reloading...';
         try {
           const r = await fetch('/api/reload');
           const d = await r.json();
           state.allCount = d.total_songs || state.allCount;
           loadSongs();
-          statusText.textContent = `ProPresenter 7 Ready (${state.allCount.toLocaleString()} songs)`;
-          statusIndicator.className = 'pro-dot';
         } catch {
-          statusText.textContent = 'Library Updated - Press Reload';
+          showToast('Library berubah, gagal reload katalog');
         }
-        return;
-      }
-
-      if (data.propresenter_dir) {
-        statusIndicator.className = 'pro-dot';
-        statusText.textContent = 'ProPresenter 7 Ready';
-      } else {
-        statusIndicator.className = 'pro-dot offline';
-        statusText.textContent = 'Vault Mode (ProPresenter Not Found)';
       }
     } catch {
-      statusIndicator.className = 'pro-dot error';
-      statusText.textContent = 'Engine Offline';
+      showToast('Engine offline: jalankan START.vbs');
+    }
+  }
+
+  function updateSettingsStatusText() {
+    if (settingsProPath) {
+      settingsProPath.textContent = state.propresenterDir || 'Folder ProPresenter tidak terdeteksi otomatis';
+    }
+    const banksCountEl = document.getElementById('settings-banks-count');
+    if (banksCountEl) {
+      banksCountEl.textContent = `${state.banksCount} Presentasi Aktif`;
     }
   }
 
   // Load Songs with Smart Number Search
   async function loadSongs() {
     let q = searchInput.value.trim();
-    songListEl.innerHTML = '<div class="pro-empty-canvas" style="padding: 24px;"><p class="empty-sub-text">Searching Library...</p></div>';
+    songListEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-sub-text">Searching Library...</p></div>';
 
     // Auto-prefix number searches if inside a specific hymnal category
     if (/^\d+$/.test(q) && state.activeCategory !== 'ALL' && state.activeCategory !== 'ID' && state.activeCategory !== 'EN') {
@@ -211,29 +338,42 @@
       const data = await res.json();
       state.currentResults = data.songs || [];
       state.renderedCount = 0;
-      resultsCount.textContent = state.currentResults.length.toLocaleString();
+
+      const totalMatched = typeof data.total_matched === 'number' ? data.total_matched : state.currentResults.length;
+      if (q.length === 0 && state.activeCategory === 'ALL') {
+        const totalDb = data.total_catalog || state.allCount || 0;
+        resultsCount.textContent = `${totalDb.toLocaleString('id-ID')} Lagu`;
+      } else if (q.length === 0) {
+        resultsCount.textContent = `${totalMatched.toLocaleString('id-ID')} Lagu`;
+      } else {
+        resultsCount.textContent = `${totalMatched.toLocaleString('id-ID')} Ditemukan`;
+      }
+
       resetSelection();
       renderSongListInitial();
     } catch {
-      songListEl.innerHTML = '<div class="pro-empty-canvas" style="padding: 24px;"><p class="empty-sub-text">Error loading songs</p></div>';
+      songListEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-sub-text">Gagal memuat lagu</p></div>';
     }
   }
 
   function resetSelection() {
     state.selectedSong = null;
+    state.activeDescendantId = '';
     addToRundownBtn.disabled = true;
+    addToRundownBtn.setAttribute('aria-disabled', 'true');
     inspectorCategoryEl.textContent = 'READY';
     inspectorTitleEl.textContent = 'Select a song from Library';
     inspectorArtistEl.textContent = '';
-    inspectorContentEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-main-text">No Presentation Selected</p><p class="empty-sub-text">Click any song from the Library on the left to preview slide canvas.</p></div>';
+    inspectorContentEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-main-text">No Presentation Selected</p><p class="empty-sub-text">Pilih lagu dari Library di sebelah kiri untuk melihat slide.</p></div>';
   }
 
   function renderSongListInitial() {
     songListEl.innerHTML = '';
+    songListEl.removeAttribute('aria-activedescendant');
     state.renderedCount = 0;
 
     if (!state.currentResults.length) {
-      songListEl.innerHTML = '<div class="pro-empty-canvas" style="padding: 24px;"><p class="empty-sub-text">No matching songs in Library</p></div>';
+      songListEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-sub-text">No matching songs in Library</p></div>';
       return;
     }
 
@@ -251,10 +391,10 @@
       const row = document.createElement('div');
       const isSelected = state.selectedSong && state.selectedSong.filename === song.filename;
       row.className = 'pro-row' + (isSelected ? ' selected' : '');
+      row.id = `song-row-${globalIdx}`;
       row.setAttribute('role', 'option');
       row.setAttribute('data-idx', globalIdx);
       row.setAttribute('aria-selected', isSelected ? 'true' : 'false');
-      row.setAttribute('tabindex', '-1');
       row.title = song.title;
 
       row.innerHTML = `
@@ -264,22 +404,20 @@
         </div>
         <div class="pro-row-right">
           <span class="pro-tag-mini">${escapeHtml(song.category)}</span>
-          <button class="pro-row-add-btn" title="Add to Playlist" aria-label="Add ${escapeHtml(song.title)}">+</button>
+          <button class="pro-row-add-btn" type="button" title="Add to Playlist" aria-label="Tambahkan ${escapeHtml(song.title)} ke playlist">+</button>
         </div>
       `;
 
-      // Select / Preview
       row.addEventListener('click', (e) => {
         if (e.target.closest('.pro-row-add-btn')) return;
+        focusSongRow(globalIdx);
         selectSong(song);
       });
 
-      // Double click to add
       row.addEventListener('dblclick', () => {
         addToRundown(song);
       });
 
-      // Quick add button
       row.querySelector('.pro-row-add-btn').addEventListener('click', (e) => {
         e.stopPropagation();
         addToRundown(song);
@@ -299,17 +437,28 @@
     }
   }
 
+  function focusSongRow(index) {
+    const row = document.getElementById(`song-row-${index}`);
+    if (!row) return;
+    songListEl.setAttribute('aria-activedescendant', row.id);
+    state.activeDescendantId = row.id;
+  }
+
   // Song Select & Slide Canvas Rendering
   async function selectSong(song) {
     state.selectedSong = song;
     addToRundownBtn.disabled = false;
+    addToRundownBtn.setAttribute('aria-disabled', 'false');
 
-    // Highlight row
     document.querySelectorAll('.pro-row').forEach(el => {
       const idx = el.getAttribute('data-idx');
       const hit = state.currentResults[idx] && state.currentResults[idx].filename === song.filename;
       el.classList.toggle('selected', !!hit);
       el.setAttribute('aria-selected', hit ? 'true' : 'false');
+      if (hit) {
+        songListEl.setAttribute('aria-activedescendant', el.id);
+        state.activeDescendantId = el.id;
+      }
     });
 
     inspectorCategoryEl.textContent = song.category || 'PRO';
@@ -322,20 +471,23 @@
       const data = await res.json();
       renderSlideGrid(data);
     } catch {
-      inspectorContentEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-sub-text">Failed to load presentation slides</p></div>';
+      inspectorContentEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-sub-text">Gagal memuat slide presentasi</p></div>';
     }
   }
 
   // Render 16:9 Black Widescreen Slide Cards
   function renderSlideGrid(data) {
     if (!data.groups || !data.groups.length) {
-      inspectorContentEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-sub-text">No slide content available</p></div>';
+      inspectorContentEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-sub-text">Tidak ada konten slide</p></div>';
       return;
     }
 
     inspectorContentEl.innerHTML = '';
     const fragment = document.createDocumentFragment();
     let globalSlideNum = 1;
+    const themeLow = state.activeTheme.toLowerCase();
+    const fontClass = themeLow.includes('worship') ? 'font-worship' :
+                      themeLow.includes('bible') ? 'font-bible' : '';
 
     data.groups.forEach(group => {
       const groupHeader = group.header || 'VERSE';
@@ -345,19 +497,30 @@
       group.slides.forEach(slideLines => {
         const slideCard = document.createElement('div');
         slideCard.className = 'pro-slide-card' + (isBlankGroup ? ' blank-card' : '');
+        slideCard.tabIndex = 0;
+        slideCard.setAttribute('role', 'button');
 
-        // Click on slide also adds to playlist or triggers preview
-        slideCard.addEventListener('dblclick', () => {
+        const slideNo = globalSlideNum;
+        const firstLine = (slideLines[0] || '').trim().slice(0, 60);
+        slideCard.setAttribute('aria-label', `Slide ${slideNo}, ${groupHeader}: ${firstLine || 'kosong'}`);
+
+        const activate = () => {
           if (state.selectedSong) addToRundown(state.selectedSong);
+        };
+        slideCard.addEventListener('dblclick', activate);
+        slideCard.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            activate();
+          }
         });
 
-        // Slide Lyric Text Lines
         const textWrapper = document.createElement('div');
-        textWrapper.className = 'pro-slide-text';
+        textWrapper.className = `pro-slide-text ${fontClass}`.trim();
 
         if (isBlankGroup) {
-          textWrapper.style.color = '#737373';
-          textWrapper.style.fontSize = '14px';
+          textWrapper.classList.add('slide-text-blank');
           textWrapper.textContent = slideLines.join(' ');
         } else {
           slideLines.forEach(line => {
@@ -368,13 +531,13 @@
         }
         slideCard.appendChild(textWrapper);
 
-        // Slide Bottom Strip with Number & Group
         const strip = document.createElement('div');
         strip.className = 'pro-slide-strip';
+        strip.setAttribute('aria-hidden', 'true');
 
         const numBadge = document.createElement('span');
         numBadge.className = `pro-slide-num-badge ${groupClass}`;
-        numBadge.textContent = globalSlideNum++;
+        numBadge.textContent = String(globalSlideNum++);
 
         const labelBadge = document.createElement('span');
         labelBadge.className = 'pro-slide-label';
@@ -412,12 +575,21 @@
     }, 40);
   }
 
+  function setRundownActionState(hasItems) {
+    injectBtn.disabled = !hasItems;
+    injectBtn.setAttribute('aria-disabled', hasItems ? 'false' : 'true');
+    copyWaBtn.disabled = !hasItems;
+    copyWaBtn.setAttribute('aria-disabled', hasItems ? 'false' : 'true');
+    clearRundownBtn.disabled = !hasItems;
+    clearRundownBtn.setAttribute('aria-disabled', hasItems ? 'false' : 'true');
+  }
+
   function renderRundown() {
     rundownCount.textContent = state.rundown.length.toString();
-    injectBtn.disabled = state.rundown.length === 0;
+    setRundownActionState(state.rundown.length > 0);
 
     if (!state.rundown.length) {
-      rundownListEl.innerHTML = '<div class="pro-empty-canvas" style="padding: 24px;"><p class="empty-sub-text">Playlist is empty</p></div>';
+      rundownListEl.innerHTML = '<div class="pro-empty-canvas"><p class="empty-sub-text">Playlist is empty</p></div>';
       return;
     }
 
@@ -425,6 +597,7 @@
     state.rundown.forEach((item, idx) => {
       const row = document.createElement('div');
       row.className = 'pro-playlist-row';
+      row.setAttribute('role', 'listitem');
 
       row.innerHTML = `
         <div class="pro-row-main">
@@ -433,9 +606,9 @@
           <span class="pro-row-artist">${escapeHtml(item.artist || item.category)}</span>
         </div>
         <div class="pro-pl-controls">
-          <button class="pro-mini-btn btn-up" title="Move Up" ${idx === 0 ? 'disabled' : ''}>▲</button>
-          <button class="pro-mini-btn btn-down" title="Move Down" ${idx === state.rundown.length - 1 ? 'disabled' : ''}>▼</button>
-          <button class="pro-mini-btn pro-mini-btn-del btn-del" title="Remove">✕</button>
+          <button class="pro-mini-btn btn-up" type="button" title="Move Up" aria-label="Naikkan ${escapeHtml(item.title)}" ${idx === 0 ? 'disabled aria-disabled="true"' : ''}>▲</button>
+          <button class="pro-mini-btn btn-down" type="button" title="Move Down" aria-label="Turunkan ${escapeHtml(item.title)}" ${idx === state.rundown.length - 1 ? 'disabled aria-disabled="true"' : ''}>▼</button>
+          <button class="pro-mini-btn pro-mini-btn-del btn-del" type="button" title="Remove" aria-label="Hapus ${escapeHtml(item.title)} dari rundown">✕</button>
         </div>
       `;
 
@@ -542,23 +715,23 @@
         showModal(
           'Injection Successful',
           `
-            <div style="font-weight: 700; color: #30d158; font-size: 14px; margin-bottom: 10px;">
+            <div class="modal-status modal-status-ok">
               ✓ Playlist '${escapeHtml(data.playlist)}' injected into ProPresenter 7
             </div>
-            <div style="background: #181818; border: 1px solid #333; padding: 10px; margin-bottom: 12px; border-radius: 4px;">
-              <p style="margin-bottom: 4px;"><strong>Songs in Playlist:</strong> ${data.songs_count} songs</p>
+            <div class="modal-detail-box">
+              <p><strong>Songs in Playlist:</strong> ${data.songs_count} songs</p>
               <p><strong>Compiled to Banks:</strong> ${compiledCount} presentations</p>
             </div>
-            <div style="font-size: 12px; color: #999999; line-height: 1.4;">
+            <div class="modal-note">
               Open <strong>ProPresenter 7</strong>. The playlist is active under Library Playlists and ready for live presentation immediately without restart.
             </div>
           `
         );
       } else {
         const missingList = missing.length
-          ? `<div style="background: #2a1214; border: 1px solid #5a2226; padding: 10px; margin-bottom: 12px; border-radius: 4px;">
-              <p style="color: #ff9d97; margin-bottom: 6px;"><strong>Gagal dikompilasi (${missing.length}):</strong></p>
-              <ul style="margin: 0; padding-left: 16px; color: #e0e0e0; font-size: 12px; line-height: 1.5;">
+          ? `<div class="modal-missing-box">
+              <p class="modal-missing-title"><strong>Gagal dikompilasi (${missing.length}):</strong></p>
+              <ul class="modal-missing-list">
                 ${missing.map(m => `<li>${escapeHtml(m)}</li>`).join('')}
               </ul>
             </div>`
@@ -566,38 +739,162 @@
         showModal(
           compiledCount > 0 ? 'Injection Partial' : 'Injection Failed',
           `
-            <div style="font-weight: 700; color: ${compiledCount > 0 ? '#ffd60a' : '#ff453a'}; font-size: 14px; margin-bottom: 10px;">
+            <div class="modal-status ${compiledCount > 0 ? 'modal-status-warn' : 'modal-status-error'}">
               ${compiledCount > 0 ? '⚠' : '✕'} Playlist '${escapeHtml(data.playlist || playlistName)}' ${compiledCount > 0 ? 'partially injected' : 'failed'}
             </div>
-            <div style="background: #181818; border: 1px solid #333; padding: 10px; margin-bottom: 12px; border-radius: 4px;">
-              <p style="margin-bottom: 4px;"><strong>Requested:</strong> ${data.songs_count || songFileNames.length} songs</p>
+            <div class="modal-detail-box">
+              <p><strong>Requested:</strong> ${data.songs_count || songFileNames.length} songs</p>
               <p><strong>Compiled to Banks:</strong> ${compiledCount}</p>
             </div>
             ${missingList}
-            <div style="font-size: 12px; color: #999999; line-height: 1.4;">
+            <div class="modal-note">
               ${escapeHtml(data.error || data.engine_output || 'Compiler error')}
             </div>
           `
         );
       }
     } catch {
-      showModal('Connection Error', '<div style="color: #ff453a;">Cannot connect to local engine at 127.0.0.1:5050.</div>');
+      showModal('Connection Error', '<div class="modal-status modal-status-error">Cannot connect to local engine at 127.0.0.1:5050.</div>');
     } finally {
-      injectBtn.disabled = false;
-      injectBtn.innerHTML = '<span class="pro-btn-glyph">▶</span><span>INJECT TO PRO7</span>';
+      injectBtn.disabled = state.rundown.length === 0;
+      injectBtn.setAttribute('aria-disabled', injectBtn.disabled ? 'true' : 'false');
+      injectBtn.innerHTML = '<span>INJECT</span>';
     }
+  }
+
+  // Modal focus management: focus trap, return focus to trigger, and inert background
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function setBackgroundInert(isInert) {
+    [mainWorkspaceEl, mainToolbarEl].forEach(el => {
+      if (!el) return;
+      if (isInert) {
+        el.setAttribute('inert', '');
+        el.setAttribute('aria-hidden', 'true');
+      } else {
+        el.removeAttribute('inert');
+        el.removeAttribute('aria-hidden');
+      }
+    });
+  }
+
+  function openDialog(overlay, focusTarget) {
+    state.lastFocusedBeforeModal = document.activeElement;
+    setBackgroundInert(true);
+    overlay.classList.remove('hidden');
+    if (focusTarget) focusTarget.focus();
+  }
+
+  function closeDialog(overlay) {
+    overlay.classList.add('hidden');
+    const anyOpen = [modalOverlay, settingsOverlay, aboutOverlay].some(o => o && !o.classList.contains('hidden'));
+    if (!anyOpen) setBackgroundInert(false);
+    const back = state.lastFocusedBeforeModal;
+    if (back && typeof back.focus === 'function') {
+      back.focus();
+    }
+  }
+
+  function trapFocus(e, overlay) {
+    if (e.key !== 'Tab') return;
+    const nodes = Array.from(overlay.querySelectorAll(FOCUSABLE)).filter(el => el.offsetParent !== null);
+    if (!nodes.length) return;
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  // Settings Modal Handlers
+  async function showSettings() {
+    if (!settingsOverlay) return;
+    state.savedScale = currentScale;
+    state.tempScale = currentScale;
+
+    applyScale(currentScale);
+
+    try {
+      const res = await fetch('/api/status');
+      const data = await res.json();
+      state.banksCount = data.banks_count || 0;
+      state.propresenterDir = data.propresenter_dir || state.propresenterDir;
+    } catch {
+      // Keep the last known status values; the dialog still opens.
+    }
+
+    updateSettingsStatusText();
+
+    if (settingsThemeSelect && state.activeTheme) {
+      for (let i = 0; i < settingsThemeSelect.options.length; i++) {
+        if (settingsThemeSelect.options[i].value.toLowerCase() === state.activeTheme.toLowerCase()) {
+          settingsThemeSelect.selectedIndex = i;
+          break;
+        }
+      }
+      updateThemePreview();
+    }
+
+    openDialog(settingsOverlay, settingsSaveBtn);
+  }
+
+  function cancelSettings() {
+    applyScale(state.savedScale);
+    closeDialog(settingsOverlay);
+  }
+
+  async function saveSettings() {
+    state.savedScale = state.tempScale;
+    applyScale(state.savedScale);
+
+    if (settingsThemeSelect) {
+      const chosenTheme = settingsThemeSelect.value;
+      state.activeTheme = chosenTheme;
+      try {
+        await fetch('/api/themes/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slide_name: chosenTheme })
+        });
+        localStorage.setItem('pro7_theme', chosenTheme);
+      } catch {
+        showToast('Tema tersimpan lokal, engine offline');
+      }
+    }
+
+    closeDialog(settingsOverlay);
+    showToast('Settings Saved');
+  }
+
+  function updateTempScale(val) {
+    const clamped = Math.min(150, Math.max(100, Math.round(val)));
+    state.tempScale = clamped / 100;
+    applyScale(state.tempScale);
+  }
+
+  // About Modal Handlers
+  function showAbout() {
+    if (!aboutOverlay) return;
+    openDialog(aboutOverlay, aboutOkBtn);
+  }
+
+  function hideAbout() {
+    closeDialog(aboutOverlay);
   }
 
   // Modal
   function showModal(title, html) {
     modalTitle.textContent = title;
     modalBody.innerHTML = html;
-    modalOverlay.classList.remove('hidden');
-    modalOkBtn.focus();
+    openDialog(modalOverlay, modalOkBtn);
   }
 
   function hideModal() {
-    modalOverlay.classList.add('hidden');
+    closeDialog(modalOverlay);
   }
 
   // Toast
@@ -605,14 +902,41 @@
     clearTimeout(state.toastTimeout);
     toastEl.textContent = msg;
     toastEl.classList.remove('hidden');
+    toastEl.removeAttribute('aria-hidden');
     state.toastTimeout = setTimeout(() => {
       toastEl.classList.add('hidden');
+      toastEl.setAttribute('aria-hidden', 'true');
     }, 2400);
+  }
+
+  // WAI-ARIA tabs pattern: roving tabindex and arrow/Home/End navigation
+  function activateTab(tab) {
+    filterTabs.forEach(t => {
+      const active = t === tab;
+      t.classList.toggle('active', active);
+      t.setAttribute('aria-selected', active ? 'true' : 'false');
+      t.tabIndex = active ? 0 : -1;
+    });
+    state.activeCategory = tab.getAttribute('data-category');
+    if (libraryPanel) libraryPanel.setAttribute('aria-labelledby', tab.id);
+    loadSongs();
+  }
+
+  function onTabKeydown(e) {
+    const idx = filterTabs.indexOf(e.currentTarget);
+    let next = -1;
+    if (e.key === 'ArrowRight') next = (idx + 1) % filterTabs.length;
+    else if (e.key === 'ArrowLeft') next = (idx - 1 + filterTabs.length) % filterTabs.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = filterTabs.length - 1;
+    if (next === -1) return;
+    e.preventDefault();
+    filterTabs[next].focus();
+    activateTab(filterTabs[next]);
   }
 
   // Event Listeners
   function setupEventListeners() {
-    // Search input
     searchInput.addEventListener('input', () => {
       clearTimeout(state.searchTimeout);
       state.searchTimeout = setTimeout(loadSongs, 70);
@@ -624,39 +948,40 @@
       searchInput.focus();
     });
 
-    // Infinite scroll
     songListEl.addEventListener('scroll', handleSongListScroll);
 
-    // Scale & Fullscreen
-    if (zoomInBtn) zoomInBtn.addEventListener('click', () => changeScale(1));
-    if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => changeScale(-1));
-    if (fullscreenToggleBtn) fullscreenToggleBtn.addEventListener('click', toggleFullscreen);
-
-    // Category Tabs
-    filterTabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        filterTabs.forEach(t => {
-          t.classList.remove('active');
-          t.setAttribute('aria-selected', 'false');
-        });
-        tab.classList.add('active');
-        tab.setAttribute('aria-selected', 'true');
-        state.activeCategory = tab.getAttribute('data-category');
-        loadSongs();
-      });
+    // Keyboard navigation inside the listbox container
+    songListEl.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        navigateSongList(e.key === 'ArrowDown' ? 1 : -1);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        navigateSongList(-state.currentResults.length);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        navigateSongList(state.currentResults.length);
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        if (state.selectedSong) {
+          e.preventDefault();
+          addToRundown(state.selectedSong);
+        }
+      }
     });
 
-    // Add button
+    filterTabs.forEach(tab => {
+      tab.addEventListener('click', () => activateTab(tab));
+      tab.addEventListener('keydown', onTabKeydown);
+    });
+
     addToRundownBtn.addEventListener('click', () => {
       if (state.selectedSong) addToRundown(state.selectedSong);
     });
 
-    // Playlist name input save
     playlistNameInput.addEventListener('input', () => {
       savePreferences();
     });
 
-    // Clear rundown
     clearRundownBtn.addEventListener('click', () => {
       if (!state.rundown.length) return;
       if (window.confirm('Clear all songs from playlist?')) {
@@ -667,9 +992,94 @@
       }
     });
 
-    // WA button & Inject button
     copyWaBtn.addEventListener('click', copyRundownForWhatsApp);
     injectBtn.addEventListener('click', injectToProPresenter);
+
+    // Settings Modal
+    if (settingsBtn) settingsBtn.addEventListener('click', showSettings);
+    if (settingsCloseBtn) settingsCloseBtn.addEventListener('click', cancelSettings);
+    if (settingsCancelBtn) settingsCancelBtn.addEventListener('click', cancelSettings);
+    if (settingsSaveBtn) settingsSaveBtn.addEventListener('click', saveSettings);
+    if (settingsOverlay) {
+      settingsOverlay.addEventListener('click', (e) => {
+        if (e.target === settingsOverlay) cancelSettings();
+      });
+      settingsOverlay.addEventListener('keydown', (e) => trapFocus(e, settingsOverlay));
+    }
+
+    if (scaleSlider) {
+      scaleSlider.addEventListener('input', (e) => {
+        updateTempScale(parseFloat(e.target.value));
+      });
+    }
+
+    if (scaleMinusBtn) {
+      scaleMinusBtn.addEventListener('click', () => {
+        updateTempScale(Math.round(currentScale * 100) - 5);
+      });
+    }
+
+    if (scalePlusBtn) {
+      scalePlusBtn.addEventListener('click', () => {
+        updateTempScale(Math.round(currentScale * 100) + 5);
+      });
+    }
+
+    if (settingsThemeSelect) {
+      settingsThemeSelect.addEventListener('change', updateThemePreview);
+    }
+
+    const installFontBtn = document.getElementById('install-font-btn');
+    if (installFontBtn) {
+      installFontBtn.addEventListener('click', async () => {
+        try {
+          await fetch('/api/font/install');
+          showToast('Membuka font installer di Windows...');
+        } catch {
+          showToast('File font tersedia di tools/fonts/CMGSans-Bold.ttf');
+        }
+      });
+    }
+
+    const cleanBanksBtn = document.getElementById('clean-banks-btn');
+    if (cleanBanksBtn) {
+      cleanBanksBtn.addEventListener('click', async () => {
+        if (window.confirm('Bersihkan seluruh presentasi .pro di folder Banks ProPresenter?')) {
+          try {
+            const res = await fetch('/api/banks/clean', { method: 'POST' });
+            const data = await res.json();
+            state.banksCount = 0;
+            updateSettingsStatusText();
+            showToast(data.message || 'Folder Banks dibersihkan');
+          } catch {
+            showToast('Gagal membersihkan Banks');
+          }
+        }
+      });
+    }
+
+    const openBanksBtn = document.getElementById('open-banks-btn');
+    if (openBanksBtn) {
+      openBanksBtn.addEventListener('click', async () => {
+        try {
+          await fetch('/api/banks/open');
+          showToast('Membuka folder Libraries/Banks di Explorer...');
+        } catch {
+          showToast('Folder Libraries/Banks tidak ditemukan');
+        }
+      });
+    }
+
+    // About Modal
+    if (aboutBtn) aboutBtn.addEventListener('click', showAbout);
+    if (aboutCloseBtn) aboutCloseBtn.addEventListener('click', hideAbout);
+    if (aboutOkBtn) aboutOkBtn.addEventListener('click', hideAbout);
+    if (aboutOverlay) {
+      aboutOverlay.addEventListener('click', (e) => {
+        if (e.target === aboutOverlay) hideAbout();
+      });
+      aboutOverlay.addEventListener('keydown', (e) => trapFocus(e, aboutOverlay));
+    }
 
     // Modal close
     modalCloseBtn.addEventListener('click', hideModal);
@@ -677,10 +1087,15 @@
     modalOverlay.addEventListener('click', (e) => {
       if (e.target === modalOverlay) hideModal();
     });
+    modalOverlay.addEventListener('keydown', (e) => trapFocus(e, modalOverlay));
 
     // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
-      if ((e.key === '/' || e.key === 'F3') && document.activeElement !== searchInput && document.activeElement !== playlistNameInput) {
+      const tag = (e.target && e.target.tagName) || '';
+      const isTypingField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable);
+      const isFormControl = isTypingField || tag === 'BUTTON' || tag === 'A';
+
+      if ((e.key === '/' || e.key === 'F3') && !isTypingField) {
         e.preventDefault();
         searchInput.focus();
         searchInput.select();
@@ -691,7 +1106,6 @@
         toggleFullscreen();
       }
 
-      // Zoom Scale shortcuts
       if (e.ctrlKey && (e.key === '=' || e.key === '+')) {
         e.preventDefault();
         changeScale(1);
@@ -707,10 +1121,24 @@
       }
 
       if (e.key === 'Enter') {
+        if (aboutOverlay && !aboutOverlay.classList.contains('hidden')) {
+          hideAbout();
+          return;
+        }
+
+        if (settingsOverlay && !settingsOverlay.classList.contains('hidden')) {
+          saveSettings();
+          return;
+        }
+
         if (!modalOverlay.classList.contains('hidden')) {
           hideModal();
           return;
         }
+
+        // Only the search field or the listbox may trigger "add on Enter".
+        // Native buttons/links/selects keep their own activation behaviour.
+        if (isFormControl && document.activeElement !== searchInput) return;
 
         if (document.activeElement === searchInput) {
           if (state.currentResults.length > 0) {
@@ -723,24 +1151,21 @@
               selectSong(state.currentResults[0]);
             }
           }
-        } else if (state.selectedSong && document.activeElement !== playlistNameInput) {
+        } else if (state.selectedSong) {
           addToRundown(state.selectedSong);
         }
       }
 
       if (e.key === 'Escape') {
-        if (!modalOverlay.classList.contains('hidden')) {
+        if (aboutOverlay && !aboutOverlay.classList.contains('hidden')) {
+          hideAbout();
+        } else if (settingsOverlay && !settingsOverlay.classList.contains('hidden')) {
+          cancelSettings();
+        } else if (!modalOverlay.classList.contains('hidden')) {
           hideModal();
         } else if (searchInput.value) {
           searchInput.value = '';
           loadSongs();
-        }
-      }
-
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        if (document.activeElement === searchInput || document.activeElement === songListEl) {
-          e.preventDefault();
-          navigateSongList(e.key === 'ArrowDown' ? 1 : -1);
         }
       }
     });
@@ -749,18 +1174,20 @@
   function navigateSongList(direction) {
     if (!state.currentResults.length) return;
     let curIdx = state.selectedSong ? state.currentResults.findIndex(s => s.filename === state.selectedSong.filename) : -1;
-    let nextIdx = curIdx + direction;
+    let nextIdx;
+    if (Math.abs(direction) > 1) {
+      nextIdx = direction > 0 ? state.currentResults.length - 1 : 0;
+    } else {
+      nextIdx = curIdx + direction;
+    }
     if (nextIdx < 0) nextIdx = 0;
     if (nextIdx >= state.currentResults.length) nextIdx = state.currentResults.length - 1;
 
     const nextSong = state.currentResults[nextIdx];
-    if (nextSong) {
-      selectSong(nextSong);
-      const rows = songListEl.querySelectorAll('.pro-row');
-      if (rows[nextIdx]) {
-        rows[nextIdx].scrollIntoView({ block: 'nearest' });
-      }
-    }
+    if (!nextSong) return;
+    selectSong(nextSong);
+    const row = document.getElementById(`song-row-${nextIdx}`);
+    if (row) row.scrollIntoView({ block: 'nearest' });
   }
 
   function escapeHtml(str) {

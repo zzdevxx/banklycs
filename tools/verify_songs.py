@@ -1,140 +1,66 @@
 import os
-import hashlib
+import sys
+import sqlite3
 import re
-from collections import Counter
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+DB_PATH = os.path.join(BASE_DIR, "database", "banklycs.db")
 
-txt_dir = os.path.join(BASE_DIR, "database")
-if not os.path.isdir(txt_dir):
-    txt_dir = os.path.join(BASE_DIR, "database")
-if not os.path.isdir(txt_dir):
-    txt_dir = os.path.join(BASE_DIR, "TXT")
+if not os.path.exists(DB_PATH):
+    print(f"[FATAL] Database not found: {DB_PATH}")
+    sys.exit(1)
 
-pro_dir = os.path.join(BASE_DIR, "engine", "PRO")
-if not os.path.isdir(pro_dir):
-    pro_dir = os.path.join(BASE_DIR, "engine", "PRO")
-if not os.path.isdir(pro_dir):
-    pro_dir = os.path.join(BASE_DIR, "PRO")
+conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+cur = conn.cursor()
 
-txt_map = {}
-for root, _, files in os.walk(txt_dir):
-    for f in files:
-        if f.endswith(".txt"):
-            txt_map[f] = os.path.join(root, f)
-txt_files = list(txt_map.keys())
-pro_files = set(f[:-4] for f in os.listdir(pro_dir) if f.endswith(".pro"))
+header_regex = re.compile(
+    r"^(BLANK|INTRO|VERSE(\s+\d+)?|PRE[\s\-]*CHORUS(\s+\d+)?|CHORUS(\s+\d+)?|BRIDGE(\s+\d+)?|TAG|INTERLUDE|ENDING|OUTRO)$",
+    re.IGNORECASE
+)
 
-header_regex = re.compile(r"^(BLANK|INTRO|VERSE(\s+\d+)?|PRE[\s\-]*CHORUS(\s+\d+)?|CHORUS(\s+\d+)?|BRIDGE(\s+\d+)?|TAG|INTERLUDE|ENDING|OUTRO)$", re.IGNORECASE)
+cur.execute("SELECT id, filename, content FROM songs ORDER BY id;")
+rows = cur.fetchall()
 
-hashes = {}
-duplicate_hashes = []
-too_short = []
-files_without_blank = []
-no_section_files = []
-slide_overflow_files = []
-encoding_errors = []
+empty_content = []
+bad_first_line = []
+overflow_slides = []
+line2_mismatch = []
 
-for fname in sorted(txt_files):
-    fpath = txt_map[fname]
-    size = os.path.getsize(fpath)
-    
-    try:
-        with open(fpath, "r", encoding="utf-8") as f:
-            content = f.read()
-    except UnicodeDecodeError:
-        try:
-            with open(fpath, "r", encoding="latin-1") as f:
-                content = f.read()
-            encoding_errors.append(fname)
-        except Exception as e:
-            too_short.append((fname, f"Read error: {e}"))
-            continue
-
-    # Content normalization for duplicate detection (ignoring title line)
+for sid, fname, content in rows:
+    if not content or not content.strip():
+        empty_content.append(fname)
+        continue
     lines = [l.strip() for l in content.splitlines()]
-    non_empty = [l for l in lines if l]
-    
-    # Hash check on actual lyrics
-    h = hashlib.md5("\n".join(non_empty).lower().encode("utf-8")).hexdigest()
-    if h in hashes:
-        duplicate_hashes.append((fname, hashes[h]))
-    else:
-        hashes[h] = fname
-        
-    if size < 35:  # ambang 35B: refrains liturgis sah ("Amin.", "Haleluya") hanya ~40-75B
-        too_short.append((fname, f"{size} bytes"))
-        
     if not lines or lines[0].upper() != "BLANK":
-        files_without_blank.append((fname, lines[0] if lines else "EMPTY"))
-        
-    # Check headers
-    has_section = False
-    for line in lines:
-        if header_regex.match(line):
-            has_section = True
-            break
-    if not has_section:
-        no_section_files.append(fname)
-        
-    # Check slide lines count (max 2 lines per slide)
-    # Parse slides by empty lines
+        bad_first_line.append(fname)
+
+    base_name = fname[:-4] if fname.endswith(".txt") else fname
+    if len(lines) >= 2 and lines[1] != base_name:
+        line2_mismatch.append((fname, lines[1]))
+
     curr_slide = []
-    max_lines_in_slide = 0
-    in_section = False
     for line in lines:
-        if header_regex.match(line):
+        if header_regex.match(line) or not line:
             if len(curr_slide) > 2:
-                max_lines_in_slide = max(max_lines_in_slide, len(curr_slide))
-            curr_slide = []
-            in_section = True
-        elif not line:
-            if len(curr_slide) > 2:
-                max_lines_in_slide = max(max_lines_in_slide, len(curr_slide))
+                overflow_slides.append(fname)
+                break
             curr_slide = []
         else:
-            if in_section:
-                curr_slide.append(line)
+            curr_slide.append(line)
     if len(curr_slide) > 2:
-        max_lines_in_slide = max(max_lines_in_slide, len(curr_slide))
-    if max_lines_in_slide > 2:
-        slide_overflow_files.append((fname, max_lines_in_slide))
+        overflow_slides.append(fname)
 
-print("=" * 60)
-print(f"HASIL VERIFIKASI LENGKAP ({len(txt_files)} FILE TXT)")
-print("=" * 60)
-print(f"1. Total File TXT        : {len(txt_files)}")
-print(f"2. Total File PRO        : {len(pro_files)}")
-print(f"   Sinkron TXT vs PRO    : {'100% Sesuai' if len(txt_files) == len(pro_files) else 'Ada perbedaan'}")
-print(f"3. Duplikasi Lirik Persis: {len(duplicate_hashes)} pasangan")
-print(f"4. File Terlalu Pendek   : {len(too_short)} file")
-print(f"5. Tanpa Header BLANK    : {len(files_without_blank)} file")
-print(f"6. Tanpa Section Tag     : {len(no_section_files)} file")
-print(f"7. Slide > 2 Baris Teks  : {len(slide_overflow_files)} file")
-print(f"8. Masalah Encoding      : {len(encoding_errors)} file")
-print("=" * 60)
+print("==============================================================================")
+print(f"VERIFY SONGS AUDIT (TOTAL: {len(rows):,} SONGS IN SQLITE)")
+print("==============================================================================")
+print(f"  * Empty content           : {len(empty_content)}")
+print(f"  * Bad first line != BLANK : {len(bad_first_line)}")
+print(f"  * Line 2 != filename base : {len(line2_mismatch)}")
+print(f"  * Overflow slides (>2 lines): {len(overflow_slides)}")
 
-if duplicate_hashes:
-    print(f"\nContoh Duplikasi ({len(duplicate_hashes)} pasang):")
-    for f1, f2 in duplicate_hashes[:15]:
-        print(f"  - [{f1}] sama dengan [{f2}]")
+if not empty_content and not bad_first_line and not line2_mismatch and not overflow_slides:
+    print("  -> STATUS: 100% MEMENUHI GOLDEN RULES PANGGUNG!")
+else:
+    print("  -> STATUS: Terdapat pelanggaran format.")
 
-if too_short:
-    print(f"\nFile Terlalu Pendek:")
-    for f, reason in too_short[:10]:
-        print(f"  - {f} ({reason})")
-
-if files_without_blank:
-    print(f"\nFile Tanpa BLANK:")
-    for f, line1 in files_without_blank[:10]:
-        print(f"  - {f} (Baris pertama: '{line1}')")
-
-if no_section_files:
-    print(f"\nFile Tanpa Section Header:")
-    for f in no_section_files[:10]:
-        print(f"  - {f}")
-
-if slide_overflow_files:
-    print(f"\nContoh Slide > 2 Baris:")
-    for f, max_l in slide_overflow_files[:10]:
-        print(f"  - {f} (Slide maks {max_l} baris)")
+conn.close()

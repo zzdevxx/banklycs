@@ -71,7 +71,7 @@ engine\banklycs.exe export-txt [target_folder]
 
 | Metrik / Item | Status | Keterangan |
 |---|---|---|
-| **Total Lagu di DB** | **24.556 lagu** | Tersimpan di `database/banklycs.db` (~44 MB) |
+| **Total Lagu di DB** | **24.520 lagu** | Tersimpan di `database/banklycs.db` (~46 MB) |
 | **Pencarian FTS5** | **Aktif** | Sub-millisecond full-text search di seluruh teks (0.60 ms) |
 | **Engine Native C#** | **`engine/banklycs.exe`** | Single-file self-contained (~75 MB), 0 dependensi luar |
 | **Kompilasi On-Demand** | **Terverifikasi** | Injeksi on-demand sukses ke ProPresenter Libraries |
@@ -97,14 +97,14 @@ Remove-Item engine\banklycs.dll, engine\banklycs.pdb, engine\banklycs.deps.json,
 
 | Metrik | Nilai | Keterangan |
 |---|---|---|
-| Total lagu | 24.556 | Setelah dedup 2026-11-04 (sebelumnya 25.904) |
+| Total lagu | 24.520 | Setelah dedup & sanitasi filename NTFS 2026-11-04 (sebelumnya 24.556) |
 | `filename` <> baris 2 isi lirik | **0** | Golden Rules §2.7 terpenuhi 100% |
 | Sufiks `(2)` / `(3)` di filename | **0** | Di-rename ke nama bersih; varian yang tersisa adalah lagu berbeda |
 | Placeholder `Various Artists` (bukan seluruh field) | **0** | 10 baris diterjemahkan ke judul yang benar; 2 baris sah `Various Artists` |
 | Judul menyisipkan `(KJ n)` | **0** | 528 baris dipindah ke kolom `artist` per RULES §2.5 |
 | `artist` mengandung ` - ` (split salah) | **0** | 442 baris di-split ulang dari baris 2 |
 | Duplikat `title+artist` | **3 grup** | Hanya pasangan `(2)/(3)` tanpa pasangan bersih — saksikan §2 |
-| Konsistensi FTS5 | **100%** | `songs` = `songs_fts` = 24.556, `integrity_check` ok |
+| Konsistensi FTS5 | **100%** | `songs` = `songs_fts` = 24.520, `integrity_check` ok |
 | Empty artist | 3.974 | Sah per RULES §2.2 (judul saja bila pencipta tak diketahui) |
 
 Dedup memakai skor kelengkapan (jumlah header bagian + panjang lirik); yang dipertahankan adalah lirik yang lebih lengkap. Kalkulasi: 1.221 baris `(2)/(3)` yang menabrak `title+artist`, 104 varian `(KJ n)` yang bentrok dengan bentuk kanonis `Title - KJ n`, 12 baris `Ade Manahutu` duplikat, dan 45 lagu dengan homoglyph Sirkilik dinormalisasi ke Latin.

@@ -3,74 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ProPresenter 7 - Lyric Vault & Direct Injector</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23f38020'/><text x='50%' y='68%' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='55' font-weight='900' fill='%23000'>P7</text></svg>">
+  <title>ProPresenter7 - Lyric Injector</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23ff9f0a'/><stop offset='100%25' stop-color='%23e65100'/></linearGradient></defs><rect width='100' height='100' rx='22' fill='url(%23g)'/><text x='50' y='50' dominant-baseline='central' text-anchor='middle' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif' font-size='50' font-weight='900' fill='%23ffffff' letter-spacing='-1'>BL</text></svg>">
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="pro-app">
   <!-- ProPresenter 7 Native Window Header / Toolbar -->
   <header class="pro-toolbar">
     <div class="tb-left">
-      <div class="pro-logo">
-        <svg class="pro-icon-p7" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <rect x="3" y="3" width="18" height="18" rx="3" fill="#f38020" stroke="none"/>
-          <path d="M7 7h5a3 3 0 0 1 0 6H7V7zm0 6h4" stroke="#000" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <span class="pro-brand-text">ProPresenter 7</span>
-        <span class="pro-subbrand-text">VAULT</span>
-      </div>
-
-      <!-- Quick Search Bar inside Toolbar -->
+      <!-- Quick Search Bar directly on the left -->
       <div class="pro-search-box">
-        <svg class="search-glyph" viewBox="0 0 16 16" fill="currentColor">
+        <svg class="search-glyph" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
           <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
         </svg>
         <input
           type="text"
           id="search-input"
           class="pro-search-input"
-          placeholder="Search Library... ( / )"
+          placeholder="Cari lagu, artis, atau nomor buku ( / )"
+          aria-label="Cari lagu di Library"
+          aria-keyshortcuts="/ F3"
           autocomplete="off"
           spellcheck="false"
         >
-        <button id="clear-search-btn" class="pro-search-clear" title="Clear Search (Esc)">✕</button>
+        <button id="clear-search-btn" class="pro-search-clear" type="button" title="Hapus Pencarian (Esc)" aria-label="Hapus pencarian">✕</button>
       </div>
     </div>
 
-    <!-- Category Tabs Filter -->
-    <div class="tb-center" role="tablist">
-      <button class="pro-tab active" data-category="ALL" role="tab" aria-selected="true">All</button>
-      <button class="pro-tab" data-category="ID" role="tab" aria-selected="false">Praise</button>
-      <button class="pro-tab" data-category="EN" role="tab" aria-selected="false">English</button>
-      <button class="pro-tab" data-category="KJ" role="tab" aria-selected="false">KJ</button>
-      <button class="pro-tab" data-category="PKJ" role="tab" aria-selected="false">PKJ</button>
-      <button class="pro-tab" data-category="NKB" role="tab" aria-selected="false">NKB</button>
-      <button class="pro-tab" data-category="KK" role="tab" aria-selected="false">KK</button>
-      <button class="pro-tab" data-category="BE" role="tab" aria-selected="false">BE</button>
-      <button class="pro-tab" data-category="KLIK" role="tab" aria-selected="false">KLIK</button>
+    <!-- Category Tabs Filter: WAI-ARIA tabs pattern (roving tabindex, panel = library list) -->
+    <div class="tb-center" role="tablist" aria-label="Filter kategori lagu">
+      <button class="pro-tab active" data-category="ALL" id="tab-ALL" role="tab" aria-selected="true" aria-controls="library-panel" tabindex="0">All</button>
+      <button class="pro-tab" data-category="ID" id="tab-ID" role="tab" aria-selected="false" aria-controls="library-panel" tabindex="-1">Praise</button>
+      <button class="pro-tab" data-category="EN" id="tab-EN" role="tab" aria-selected="false" aria-controls="library-panel" tabindex="-1">English</button>
+      <button class="pro-tab" data-category="KJ" id="tab-KJ" role="tab" aria-selected="false" aria-controls="library-panel" tabindex="-1">KJ</button>
+      <button class="pro-tab" data-category="PKJ" id="tab-PKJ" role="tab" aria-selected="false" aria-controls="library-panel" tabindex="-1">PKJ</button>
+      <button class="pro-tab" data-category="NKB" id="tab-NKB" role="tab" aria-selected="false" aria-controls="library-panel" tabindex="-1">NKB</button>
+      <button class="pro-tab" data-category="KK" id="tab-KK" role="tab" aria-selected="false" aria-controls="library-panel" tabindex="-1">KK</button>
+      <button class="pro-tab" data-category="BE" id="tab-BE" role="tab" aria-selected="false" aria-controls="library-panel" tabindex="-1">BE</button>
+      <button class="pro-tab" data-category="KLIK" id="tab-KLIK" role="tab" aria-selected="false" aria-controls="library-panel" tabindex="-1">KLIK</button>
     </div>
 
-    <!-- Right Controls: Status, Font Scale, Fullscreen, Inject Action -->
+    <!-- Right Controls: Setting, About & Inject -->
     <div class="tb-right">
-      <div class="pro-status-badge" id="system-status">
-        <span class="pro-dot" id="status-indicator"></span>
-        <span id="status-text">ProPresenter 7 Ready</span>
-      </div>
-
-      <div class="pro-scale-group" title="Ubah Ukuran Tampilan (Scale)">
-        <button id="zoom-out-btn" class="pro-zoom-btn" title="Kecilkan Skala Tampilan" aria-label="Kecilkan Skala">A−</button>
-        <span id="zoom-level-label" class="pro-zoom-level">120%</span>
-        <button id="zoom-in-btn" class="pro-zoom-btn" title="Perbesar Skala Tampilan" aria-label="Perbesar Skala">A+</button>
-      </div>
-
-      <button id="fullscreen-toggle" class="pro-btn-ghost" title="Layar Penuh (F11)">
-        <span class="pro-btn-glyph">⛶</span>
-        <span>Screen</span>
+      <button id="settings-btn" class="pro-btn-ghost" type="button" title="Settings">
+        <svg class="pro-btn-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" focusable="false">
+          <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+        </svg>
+        <span>Setting</span>
       </button>
 
-      <button id="inject-btn" class="pro-btn-primary" disabled>
-        <span class="pro-btn-glyph">▶</span>
-        <span>INJECT TO PRO7</span>
+      <button id="about-btn" class="pro-btn-ghost" type="button" title="About Creator">
+        <svg class="pro-btn-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" focusable="false">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+        </svg>
+        <span>About</span>
+      </button>
+
+      <button id="inject-btn" class="pro-btn-primary" type="button" disabled aria-disabled="true">
+        <span>INJECT</span>
       </button>
     </div>
   </header>
@@ -81,57 +71,59 @@
     <!-- LEFT SIDEBAR: Library Master & Playlist Rundown -->
     <aside class="pro-sidebar" aria-label="ProPresenter Library and Playlist">
 
-      <!-- Top Section: Library Master Songs -->
-      <section class="pro-sidebar-section pro-library-section">
+      <!-- Top Section: Library Master Songs (tabpanel for the category tabs) -->
+      <section class="pro-sidebar-section pro-library-section" id="library-panel" role="tabpanel" aria-labelledby="tab-ALL">
         <div class="pro-section-header">
           <div class="pro-section-title-wrap">
-            <svg class="pro-folder-icon" viewBox="0 0 16 16" fill="#f38020">
+            <svg class="pro-folder-icon" viewBox="0 0 16 16" fill="#f38020" aria-hidden="true" focusable="false">
               <path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h4.344A2 2 0 0 1 16 5v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4.34c0-.16.03-.317.086-.462l.454-.008z"/>
             </svg>
-            <span class="pro-section-title">LIBRARY</span>
+            <span class="pro-section-title" id="library-heading">LIBRARY</span>
           </div>
-          <span class="pro-badge-count" id="results-count">0</span>
+          <span class="pro-badge-count" id="results-count" aria-live="polite">24.520 Lagu</span>
         </div>
 
-        <!-- Songs Scroll List -->
-        <div class="pro-list-container" id="song-list" role="listbox">
+        <!-- Songs Scroll List: keyboard-navigable listbox (roving tabindex + aria-activedescendant) -->
+        <div class="pro-list-container" id="song-list" role="listbox" tabindex="0" aria-labelledby="library-heading" aria-describedby="song-list-hint">
           <!-- Populated by app.js -->
         </div>
+        <p id="song-list-hint" class="sr-only">Gunakan panah atas dan bawah untuk memilih lagu, Enter untuk menambahkan ke playlist.</p>
       </section>
 
       <!-- Resizer / Splitter bar -->
-      <div class="pro-splitter"></div>
+      <div class="pro-splitter" aria-hidden="true"></div>
 
       <!-- Bottom Section: Active Playlist Rundown -->
       <section class="pro-sidebar-section pro-playlist-section">
         <div class="pro-section-header">
           <div class="pro-section-title-wrap">
-            <svg class="pro-playlist-icon" viewBox="0 0 16 16" fill="#32ade6">
+            <svg class="pro-playlist-icon" viewBox="0 0 16 16" fill="#32ade6" aria-hidden="true" focusable="false">
               <path d="M2.5 3.5a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-11zm0 3a.5.5 0 0 1 0-1h11a.5.5 0 0 1 0 1h-11zm0 3a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zm0 3a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7z"/>
             </svg>
+            <label for="playlist-name-input" class="sr-only">Nama playlist</label>
             <input
               type="text"
               id="playlist-name-input"
               class="pro-playlist-name-input"
               value="Sunday Service"
-              placeholder="Playlist Name..."
+              placeholder="Nama Playlist..."
               spellcheck="false"
             >
           </div>
-          <span class="pro-badge-count pro-badge-cyan" id="rundown-count">0</span>
+          <span class="pro-badge-count pro-badge-cyan" id="rundown-count" aria-live="polite">0</span>
         </div>
 
         <!-- Rundown Items List -->
-        <div class="pro-list-container" id="rundown-list" role="list">
+        <div class="pro-list-container" id="rundown-list" role="list" aria-label="Daftar lagu rundown">
           <!-- Populated by app.js -->
         </div>
 
         <!-- Playlist Footer Utilities -->
         <div class="pro-playlist-footer">
-          <button id="copy-wa-btn" class="pro-subbtn" title="Copy Rundown for WhatsApp">
+          <button id="copy-wa-btn" class="pro-subbtn" type="button" title="Copy Rundown for WhatsApp" aria-label="Salin rundown untuk WhatsApp" disabled aria-disabled="true">
             📋 Copy for WA
           </button>
-          <button id="clear-rundown-btn" class="pro-subbtn pro-subbtn-danger" title="Clear Rundown">
+          <button id="clear-rundown-btn" class="pro-subbtn pro-subbtn-danger" type="button" title="Clear Rundown" aria-label="Kosongkan rundown" disabled aria-disabled="true">
             Clear
           </button>
         </div>
@@ -151,21 +143,21 @@
         </div>
 
         <div class="pres-actions">
-          <button id="add-to-rundown-btn" class="pro-btn-secondary" disabled>
+          <button id="add-to-rundown-btn" class="pro-btn-secondary" type="button" disabled aria-disabled="true">
             + Add to Playlist
           </button>
         </div>
       </div>
 
       <!-- 16:9 Black Widescreen Slide Thumbnails Grid -->
-      <div class="pro-slide-grid" id="inspector-content" tabindex="0">
+      <div class="pro-slide-grid" id="inspector-content" role="group" aria-label="Slide presentasi lagu terpilih">
         <div class="pro-empty-canvas">
-          <svg class="empty-slide-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <svg class="empty-slide-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" focusable="false">
             <rect x="2" y="3" width="20" height="14" rx="2" stroke-width="1.5"/>
             <path d="M8 21h8m-4-4v4" stroke-width="1.5"/>
           </svg>
           <p class="empty-main-text">No Presentation Selected</p>
-          <p class="empty-sub-text">Click any song from the Library on the left to preview slide canvas.</p>
+          <p class="empty-sub-text">Pilih lagu dari Library di sebelah kiri untuk melihat slide.</p>
         </div>
       </div>
 
@@ -174,23 +166,172 @@
   </main>
 
   <!-- ProPresenter Dark HUD Modal Dialog -->
-  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal-window">
+  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-window" role="document">
       <div class="modal-window-header">
         <div class="modal-window-title" id="modal-title">ProPresenter 7 Notification</div>
-        <button id="modal-close-btn" class="modal-window-close">✕</button>
+        <button id="modal-close-btn" class="modal-window-close" type="button" aria-label="Tutup dialog">✕</button>
       </div>
       <div class="modal-window-body" id="modal-body">
         <!-- Content injected dynamically -->
       </div>
       <div class="modal-window-footer">
-        <button id="modal-ok-btn" class="pro-btn-primary">OK</button>
+        <button id="modal-ok-btn" class="pro-btn-primary" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings & Preferences Modal Dialog -->
+  <div id="settings-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="modal-window settings-window" role="document">
+      <div class="modal-window-header">
+        <div class="modal-window-title" id="settings-title">Settings</div>
+        <button id="settings-close-btn" class="modal-window-close" type="button" title="Close (Esc)" aria-label="Tutup settings">✕</button>
+      </div>
+
+      <div class="modal-window-body settings-body">
+        <!-- Section 1: Skala Tampilan App (Slider + Stepper) -->
+        <div class="settings-control-card">
+          <div class="settings-row-label">
+            <span class="settings-label-title" id="scale-label">App Scale</span>
+            <span id="settings-scale-badge" class="settings-val-badge" aria-live="polite">120%</span>
+          </div>
+          <div class="settings-scale-stepper">
+            <button id="scale-minus-btn" class="settings-stepper-btn" type="button" title="Kecilkan Skala" aria-label="Kecilkan skala tampilan">A−</button>
+            <input type="range" id="scale-slider" min="100" max="150" step="5" value="120" class="settings-slider" aria-labelledby="scale-label" aria-valuetext="120 persen">
+            <button id="scale-plus-btn" class="settings-stepper-btn" type="button" title="Perbesar Skala" aria-label="Perbesar skala tampilan">A+</button>
+          </div>
+        </div>
+
+        <!-- Section 2: Pengaturan Tema Default & Live Preview -->
+        <div class="settings-control-card">
+          <div class="settings-row-label">
+            <span class="settings-label-title" id="theme-label">Default Theme (ProPresenter 7)</span>
+            <span class="settings-tag-ok">Auto-Detected</span>
+          </div>
+          <div class="settings-select-wrap">
+            <select id="settings-theme-select" class="settings-select" aria-labelledby="theme-label">
+              <option value="Lyric - Praise">Lyric - Praise (Default)</option>
+              <option value="Lyric - Worship">Lyric - Worship</option>
+            </select>
+          </div>
+
+          <!-- 16:9 Live Slide Canvas Preview inside Settings -->
+          <div class="settings-preview-wrap">
+            <div class="settings-slide-preview" role="img" aria-label="Pratinjau slide tema terpilih">
+              <div class="preview-text-box">
+                <p class="preview-line-1">KAU ALLAH YANG BESAR</p>
+                <p class="preview-line-2">AJAIB DAN BERKUASA</p>
+              </div>
+              <div class="preview-strip" aria-hidden="true">
+                <span class="preview-badge group-verse">1</span>
+                <span id="preview-theme-tag" class="preview-theme-tag">LYRIC - PRAISE</span>
+                <span class="preview-res-tag">1920 × 1080</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-path-box">
+            <span class="spec-label">ProPresenter:</span>
+            <span class="spec-path" id="settings-pro-path">Mendeteksi...</span>
+          </div>
+
+          <div class="settings-path-box settings-path-box-row">
+            <div class="settings-path-inline">
+              <span class="spec-label">Library Banks:</span>
+              <span id="settings-banks-count" class="spec-value">0 Presentasi Aktif</span>
+            </div>
+            <div class="settings-path-actions">
+              <button id="open-banks-btn" class="settings-pill-btn" type="button" title="Buka folder Libraries/Banks di Windows Explorer">Buka Folder</button>
+              <button id="clean-banks-btn" class="settings-pill-btn settings-pill-btn-danger" type="button" title="Bersihkan seluruh file .pro di folder Banks ProPresenter">Bersihkan Banks</button>
+            </div>
+          </div>
+
+          <div class="settings-path-box settings-path-box-row">
+            <div class="settings-path-inline">
+              <span class="spec-label">Font Panggung:</span>
+              <span id="settings-font-badge" class="settings-tag-ok">✓ CMG Sans Terpasang</span>
+            </div>
+            <button id="install-font-btn" class="settings-pill-btn hidden" type="button" title="Install font CMG Sans ke Windows">Install Font</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-window-footer">
+        <button id="settings-cancel-btn" class="pro-btn-ghost" type="button">Cancel</button>
+        <button id="settings-save-btn" class="pro-btn-primary" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- About Creator & Project Modal Dialog -->
+  <div id="about-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="about-title">
+    <div class="modal-window about-window" role="document">
+      <div class="modal-window-header">
+        <div class="modal-window-title" id="about-title">About Creator & Project</div>
+        <button id="about-close-btn" class="modal-window-close" type="button" title="Close (Esc)" aria-label="Tutup about">✕</button>
+      </div>
+
+      <div class="modal-window-body about-body">
+        <div class="about-hero-card">
+          <div class="about-photo-wrap">
+            <img src="author.jpg" alt="Foto Andreas Restuawanta Christwara" class="about-photo">
+          </div>
+          <div class="about-details">
+            <h3 class="about-name">Andreas Restuawanta Christwara</h3>
+            <div class="about-handle-row">
+              <span class="about-handle">@zzdevxx</span>
+              <span class="about-badge-verified">Creator & Maintainer</span>
+            </div>
+            <p class="about-role">Lead Architect of Banklycs & Tri-Harness Workspace Ecosystem</p>
+          </div>
+        </div>
+
+        <div class="about-stats-grid">
+          <div class="about-stat-item">
+            <span class="stat-num">24.520</span>
+            <span class="stat-name">Master Songs</span>
+          </div>
+          <div class="about-stat-item">
+            <span class="stat-num">46.14 MB</span>
+            <span class="stat-name">Single SQLite FTS5</span>
+          </div>
+          <div class="about-stat-item">
+            <span class="stat-num">&lt; 1 ms</span>
+            <span class="stat-name">Protobuf Compiler</span>
+          </div>
+          <div class="about-stat-item">
+            <span class="stat-num">Pro7</span>
+            <span class="stat-name">Native Injector</span>
+          </div>
+        </div>
+
+        <div class="about-links-grid">
+          <a href="https://github.com/zzdevxx/banklycs" target="_blank" rel="noopener" class="about-link-card">
+            <span class="about-link-title">GitHub Repository</span>
+            <span class="about-link-subtitle">github.com/zzdevxx/banklycs</span>
+            <span class="about-link-arrow" aria-hidden="true">↗</span>
+          </a>
+          <a href="https://zzdevxx.github.io/banklycs-download/" target="_blank" rel="noopener" class="about-link-card">
+            <span class="about-link-title">Live Web Portal</span>
+            <span class="about-link-subtitle">zzdevxx.github.io/banklycs-download</span>
+            <span class="about-link-arrow" aria-hidden="true">↗</span>
+          </a>
+        </div>
+
+        <div class="about-license-note">
+          MIT License © 2026 Andreas Restuawanta Christwara (@zzdevxx). Non-commercial ecclesiastical worship presentation tool.
+        </div>
+      </div>
+
+      <div class="modal-window-footer">
+        <button id="about-ok-btn" class="pro-btn-primary" type="button">OK</button>
       </div>
     </div>
   </div>
 
   <!-- Minimal ProPresenter Floating HUD Toast -->
-  <div id="toast" class="pro-toast hidden" role="status" aria-live="polite"></div>
+  <div id="toast" class="pro-toast hidden" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <script src="app.js"></script>
 </body>

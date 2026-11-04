@@ -83,6 +83,14 @@ internal class Program
 			return;
 		}
 
+		// Sub-command: clean-propresenter / clean
+		if (args.Length >= 1 && (args[0].Equals("clean-propresenter", StringComparison.OrdinalIgnoreCase) ||
+		                         args[0].Equals("clean", StringComparison.OrdinalIgnoreCase)))
+		{
+			CleanProPresenter(path);
+			return;
+		}
+
 		// Default execution (Double-Click or --server): Start Native Studio Console
 		bool isCompile = args.Any(a => a.Equals("--compile", StringComparison.OrdinalIgnoreCase) ||
 		                              a.Equals("--full", StringComparison.OrdinalIgnoreCase) ||
@@ -91,11 +99,15 @@ internal class Program
 		if (!isCompile)
 		{
 			int port = 5050;
-			if (args.Length >= 2 && args[0].Equals("--server", StringComparison.OrdinalIgnoreCase) && int.TryParse(args[1], out int p))
+			for (int i = 0; i < args.Length; i++)
 			{
-				port = p;
+				if (args[i].Equals("--server", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length && int.TryParse(args[i + 1], out int p))
+				{
+					port = p;
+				}
 			}
-			Banklycs.StudioServer.Start(path, port);
+			bool noBrowser = args.Any(a => a.Equals("--no-browser", StringComparison.OrdinalIgnoreCase));
+			Banklycs.StudioServer.Start(path, port, openBrowser: !noBrowser);
 			return;
 		}
 
@@ -744,18 +756,24 @@ internal class Program
 
 	private static string GetRtfString(List<string> lines, string genre)
 	{
-		string text;
-		string text2;
-		if (genre == "Worship")
+		// Prefer typography recovered from the native template slide (exact ProPresenter match).
+		// Fall back to genre-based defaults if template was not loaded.
+		string font = s_tplFont;
+		double pt = s_tplFontPt;
+		bool isBold = s_tplBold;
+
+		if (s_baseSlideTemplate == null)
 		{
-			text = "{\\rtf0\\ansi\\ansicpg1252{\\fonttbl\\f0\\fnil TimesNewNormal-Regular;}{\\colortbl;\\red255\\green255\\blue255;\\red255\\green255\\blue255;}{\\*\\expandedcolortbl;\\csgenericrgb\\c100000\\c100000\\c100000\\c100000;\\csgenericrgb\\c100000\\c100000\\c100000\\c0;}{\\*\\listtable{\\list\\listid1\\listtemplateid1\\listhybrid{\\listlevel\\levelnfc23\\levelnfcn23\\leveljc0\\leveljcn0\\levelfollow0\\levelstartat1{\\leveltext\\leveltemplateid1 \\'01\\u9679 ?;}{\\levelnumbers;}}}}{\\*\\listoverridetable{\\listoverride\\listid1\\listoverridecount0\\ls1}}\\uc1\\paperw38400\\margl0\\margr0\\margt0\\margb0";
-			text2 = "\\pard\\li0\\fi0\\ri0\\qc\\sb0\\sa0\\sl240\\slmult1\\slleading0\\f0\\b0\\i0\\ul0\\strike0\\fs150\\expnd0\\expndtw0\\CocoaLigature1\\cf1\\strokewidth0\\strokec1\\nosupersub\\ulc0\\highlight2\\cb2 ";
+			if (genre == "Worship") { font = "TimesNewNormal-Regular"; pt = 75.0; isBold = false; }
+			else if (genre == "Bible") { font = "ArialMT"; pt = 50.0; isBold = false; }
+			else { font = "CMGSans-Bold"; pt = 67.0; isBold = true; }
 		}
-		else
-		{
-			text = "{\\rtf0\\ansi\\ansicpg1252{\\fonttbl\\f0\\fnil CMGSans-Bold;}{\\colortbl;\\red255\\green255\\blue255;\\red255\\green255\\blue255;}{\\*\\expandedcolortbl;\\csgenericrgb\\c100000\\c100000\\c100000\\c100000;\\csgenericrgb\\c100000\\c100000\\c100000\\c0;}{\\*\\listtable{\\list\\listid1\\listtemplateid1\\listhybrid{\\listlevel\\levelnfc23\\levelnfcn23\\leveljc0\\leveljcn0\\levelfollow0\\levelstartat1{\\leveltext\\leveltemplateid1 \\'01\\u9679 ?;}{\\levelnumbers;}}}}{\\*\\listoverridetable{\\listoverride\\listid1\\listoverridecount0\\ls1}}\\uc1\\paperw38400\\margl0\\margr0\\margt0\\margb0";
-			text2 = "\\pard\\li0\\fi0\\ri0\\qc\\sb0\\sa0\\sl240\\slmult1\\slleading0\\f0\\b\\i0\\ul0\\strike0\\fs134\\expnd0\\expndtw0\\CocoaLigature1\\cf1\\strokewidth0\\strokec1\\nosupersub\\ulc0\\highlight2\\cb2 ";
-		}
+
+		int fs = (int)Math.Round(pt * 2); // RTF \fs is half-points
+		string boldFlag = isBold ? "" : "0";
+
+		string text = $@"{{\rtf0\ansi\ansicpg1252{{\fonttbl\f0\fnil {font};}}{{\colortbl;\red255\green255\blue255;\red255\green255\blue255;}}{{\*\expandedcolortbl;\csgenericrgb\c100000\c100000\c100000\c100000;\csgenericrgb\c100000\c100000\c100000\c0;}}{{\*\listtable{{\list\listid1\listtemplateid1\listhybrid{{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1{{\leveltext\leveltemplateid1 \'01陹 ?;}}{{\levelnumbers;}}}}{{\*\listoverridetable{{\listoverride\listid1\listoverridecount0\ls1}}}}\uc1\paperw38400\margl0\margr0\margt0\margb0";
+		string text2 = $@"\pard\li0\fi0\ri0\qc\sb0\sa0\sl240\slmult1\slleading0\f0\b{boldFlag}\i0\ul0\strike0\fs{fs}\expnd0\expndtw0\CocoaLigature1\cf1\strokewidth0\strokec1\nosupersub\ulc0\highlight2\cb2 ";
 		List<string> list = new List<string>();
 		foreach (string line in lines)
 		{
@@ -941,6 +959,64 @@ internal class Program
 	private static Template.Types.Slide? s_baseSlideTemplate = null;
 	private static ApplicationInfo? s_appInfo = null;
 	private static readonly object s_themeLock = new object();
+	private static string s_tplFont = "CMGSans-Bold";
+	private static double s_tplFontPt = 67.0;
+	private static bool s_tplBold = true;
+	private static string s_tplFile = "";
+	public static string ActiveSlideTemplateName = "Lyric - Praise";
+
+	public static string GetActiveSlideTemplateName() => ActiveSlideTemplateName;
+
+	public static (string font, double pt, bool bold, string file) GetActiveTemplateTypo() => (s_tplFont, s_tplFontPt, s_tplBold, s_tplFile);
+
+	public static void ResetThemeCache()
+	{
+		lock (s_themeLock)
+		{
+			s_baseSlideTemplate = null;
+		}
+	}
+
+	public static Template.Types.Slide? PickSlideFromDoc(Template.Types.Document doc)
+	{
+		if (doc == null || doc.Slides == null || doc.Slides.Count == 0) return null;
+		string wanted = GetActiveSlideTemplateName();
+		var slide = doc.Slides.FirstOrDefault(s => s.Name.Equals(wanted, StringComparison.OrdinalIgnoreCase));
+		if (slide != null) return slide;
+		slide = doc.Slides.FirstOrDefault(s => s.Name == "Lyric - Praise");
+		if (slide != null) return slide;
+		return doc.Slides.FirstOrDefault();
+	}
+
+	// Cache the resolved slide's RTF typography recovered from its native template.
+	// Returns (fontName, fontSizePt, isBold). Font size comes from \fs (half-points) in RTF.
+	private static (string font, double pt, bool bold) ParseTemplateRtfTypo(Template.Types.Slide? slide)
+	{
+		string font = "CMGSans-Bold";
+		double pt = 67.0;
+		bool bold = true;
+		try
+		{
+			if (slide?.BaseSlide?.Elements == null || slide.BaseSlide.Elements.Count == 0) return (font, pt, bold);
+			var el = slide.BaseSlide.Elements[0].Element_?.Text?.RtfData;
+			if (el == null || el.Length == 0) return (font, pt, bold);
+			string rtf = Encoding.UTF8.GetString(el.ToByteArray());
+
+			// font name from font table: {\fonttbl\f0\fnil NAME;}
+			var fm = Regex.Match(rtf, @"\\fonttbl\\f0\\fnil\s+([^;]+);");
+			if (fm.Success) font = fm.Groups[1].Value.Trim();
+
+			// bold flag: first occurrence of \b followed by non-digit (or \b then space) = bold; \b0 = not bold
+			var bm = Regex.Match(rtf, @"\\b(\d*)");
+			if (bm.Success) bold = string.IsNullOrEmpty(bm.Groups[1].Value) || bm.Groups[1].Value != "0";
+
+			// font size: \fsNN (half-points)
+			var sm = Regex.Match(rtf, @"\\fs(\d+)");
+			if (sm.Success) pt = int.Parse(sm.Groups[1].Value) / 2.0;
+		}
+		catch { }
+		return (font, pt, bold);
+	}
 
 	public static bool EnsureThemeLoaded(string? rootPath = null, string? proPresenterDir = null)
 	{
@@ -949,41 +1025,47 @@ internal class Program
 		{
 			if (s_baseSlideTemplate != null) return true;
 
-			string? themePath = null;
+			var candidateThemeFiles = new List<string>();
+
 			if (!string.IsNullOrEmpty(proPresenterDir) && Directory.Exists(proPresenterDir))
 			{
-				string t = Path.Combine(proPresenterDir, "Themes", "zz", "Theme");
-				if (File.Exists(t)) themePath = t;
-				else
+				string themesRoot = Path.Combine(proPresenterDir, "Themes");
+				if (Directory.Exists(themesRoot))
 				{
-					t = Path.Combine(proPresenterDir, "Themes", "xx", "Theme");
-					if (File.Exists(t)) themePath = t;
+					try
+					{
+						var allThemeFiles = Directory.GetFiles(themesRoot, "Theme", SearchOption.AllDirectories);
+						// Prefer Banklycs group first, otherwise alphabetical group order for determinism
+						var ordered = allThemeFiles
+							.OrderBy(f => Path.GetFileName(Path.GetDirectoryName(f) ?? "").Equals("Banklycs", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+							.ThenBy(f => Path.GetFileName(Path.GetDirectoryName(f) ?? ""), StringComparer.OrdinalIgnoreCase)
+							.ToList();
+						candidateThemeFiles.AddRange(ordered);
+					}
+					catch { }
 				}
 			}
 
-			if (themePath == null && !string.IsNullOrEmpty(rootPath))
+			if (!string.IsNullOrEmpty(rootPath))
 			{
 				string localTheme = Path.Combine(rootPath, "engine", "ThemeTemplate");
-				if (File.Exists(localTheme)) themePath = localTheme;
-				else
-				{
-					localTheme = Path.Combine(rootPath, "Engine", "ThemeTemplate");
-					if (File.Exists(localTheme)) themePath = localTheme;
-				}
+				if (File.Exists(localTheme)) candidateThemeFiles.Add(localTheme);
+				localTheme = Path.Combine(rootPath, "Engine", "ThemeTemplate");
+				if (File.Exists(localTheme)) candidateThemeFiles.Add(localTheme);
 			}
 
-			if (themePath == null)
-			{
-				string baseDirTheme = Path.Combine(AppContext.BaseDirectory, "ThemeTemplate");
-				if (File.Exists(baseDirTheme)) themePath = baseDirTheme;
-				else
-				{
-					baseDirTheme = Path.Combine(AppContext.BaseDirectory, "engine", "ThemeTemplate");
-					if (File.Exists(baseDirTheme)) themePath = baseDirTheme;
-				}
-			}
+			string baseDirTheme = Path.Combine(AppContext.BaseDirectory, "ThemeTemplate");
+			if (File.Exists(baseDirTheme)) candidateThemeFiles.Add(baseDirTheme);
+			baseDirTheme = Path.Combine(AppContext.BaseDirectory, "engine", "ThemeTemplate");
+			if (File.Exists(baseDirTheme)) candidateThemeFiles.Add(baseDirTheme);
 
-			if (themePath == null || !File.Exists(themePath))
+			// De-duplicate by full path
+			candidateThemeFiles = candidateThemeFiles
+				.GroupBy(p => p.ToLowerInvariant())
+				.Select(g => g.First())
+				.ToList();
+
+			if (candidateThemeFiles.Count == 0)
 			{
 				Console.WriteLine("[WARN] File Tema tidak ditemukan di ProPresenter maupun engine/ThemeTemplate fallback!");
 				return false;
@@ -991,16 +1073,62 @@ internal class Program
 
 			try
 			{
-				byte[] data = File.ReadAllBytes(themePath);
-				Template.Types.Document themeDoc = Template.Types.Document.Parser.ParseFrom(data);
-				Template.Types.Slide? slide = themeDoc.Slides.FirstOrDefault(s => s.Name == "Lyric - Praise") ?? themeDoc.Slides.FirstOrDefault();
+				Template.Types.Slide? slide = null;
+				ApplicationInfo? appInfo = null;
+				string usedFile = "";
+				byte[] usedData = Array.Empty<byte>();
+
+				// First pass: exact slide name match across all theme files/profiles
+				foreach (string tf in candidateThemeFiles)
+				{
+					byte[] data = File.ReadAllBytes(tf);
+					var doc = Template.Types.Document.Parser.ParseFrom(data);
+					var found = doc.Slides?.FirstOrDefault(s => s.Name.Equals(GetActiveSlideTemplateName(), StringComparison.OrdinalIgnoreCase));
+					if (found != null)
+					{
+						slide = found;
+						appInfo = doc.ApplicationInfo;
+						usedFile = tf;
+						usedData = data;
+						break;
+					}
+				}
+
+				// Fallback: Lyric - Praise across files (or first slide of first file)
 				if (slide == null)
 				{
-					Console.WriteLine("[WARN] Slide template kosong di Theme!");
+					foreach (string tf in candidateThemeFiles)
+					{
+						byte[] data = File.ReadAllBytes(tf);
+						var doc = Template.Types.Document.Parser.ParseFrom(data);
+						var found = doc.Slides?.FirstOrDefault(s => s.Name == "Lyric - Praise") ?? doc.Slides?.FirstOrDefault();
+						if (found != null)
+						{
+							slide = found;
+							appInfo = doc.ApplicationInfo;
+							usedFile = tf;
+							usedData = data;
+							break;
+						}
+					}
+				}
+
+				if (slide == null)
+				{
+					Console.WriteLine("[WARN] Slide template kosong di semua file Theme!");
 					return false;
 				}
+
 				s_baseSlideTemplate = slide;
-				s_appInfo = themeDoc.ApplicationInfo;
+				s_appInfo = appInfo;
+
+				// Recover font/size/bold from native template slide and cache it
+				s_tplFont = ParseTemplateRtfTypo(slide).font;
+				s_tplFontPt = ParseTemplateRtfTypo(slide).pt;
+				s_tplBold = ParseTemplateRtfTypo(slide).bold;
+				s_tplFile = usedFile;
+
+				Console.WriteLine($"[THEME] Loaded slide '{slide.Name}' from {usedFile} | font={s_tplFont} pt={s_tplFontPt} bold={s_tplBold}");
 				return true;
 			}
 			catch (Exception ex)
@@ -1025,7 +1153,11 @@ internal class Program
 			Directory.CreateDirectory(dir);
 		}
 
-		return BuildPresentation(s_baseSlideTemplate, songName, parsedGroups, "Praise", targetFile, s_appInfo);
+		string genre = "Praise";
+		if (ActiveSlideTemplateName.Contains("Worship", StringComparison.OrdinalIgnoreCase)) genre = "Worship";
+		else if (ActiveSlideTemplateName.Contains("Bible", StringComparison.OrdinalIgnoreCase)) genre = "Bible";
+
+		return BuildPresentation(s_baseSlideTemplate, songName, parsedGroups, genre, targetFile, s_appInfo);
 	}
 
 	public static void ExportTxt(string rootPath, string targetDir)
@@ -1070,6 +1202,53 @@ internal class Program
 
 		sw.Stop();
 		Console.WriteLine($"[OK] Sukses mengekspor {count:N0} lagu ke '{targetDir}' dalam {sw.ElapsedMilliseconds} ms ({sw.Elapsed.TotalSeconds:F2} detik)!");
+	}
+
+	public static void CleanProPresenter(string rootPath)
+	{
+		string pDir = Banklycs.StudioServer.ResolveProPresenterDir();
+		if (string.IsNullOrEmpty(pDir) || !Directory.Exists(pDir))
+		{
+			Console.WriteLine("[WARN] Folder ProPresenter tidak ditemukan di sistem.");
+			return;
+		}
+
+		// 1. Delete all .pro files in Libraries/Banks
+		string libBanks = Path.Combine(pDir, "Libraries", "Banks");
+		int deletedSongs = 0;
+		if (Directory.Exists(libBanks))
+		{
+			foreach (string f in Directory.GetFiles(libBanks, "*.pro"))
+			{
+				try
+				{
+					File.Delete(f);
+					deletedSongs++;
+				}
+				catch { }
+			}
+		}
+
+		// 2. Clear playlists in Playlists/Library
+		string playlistDoc = Path.Combine(pDir, "Playlists", "Library");
+		int clearedPlaylists = 0;
+		if (File.Exists(playlistDoc))
+		{
+			try
+			{
+				byte[] bytes = File.ReadAllBytes(playlistDoc);
+				var doc = PlaylistDocument.Parser.ParseFrom(bytes);
+				if (doc.RootNode?.Playlists?.Playlists != null)
+				{
+					clearedPlaylists = doc.RootNode.Playlists.Playlists.Count;
+					doc.RootNode.Playlists.Playlists.Clear();
+					File.WriteAllBytes(playlistDoc, doc.ToByteArray());
+				}
+			}
+			catch { }
+		}
+
+		Console.WriteLine($"[CLEAN] Selesai: {deletedSongs} file .pro dibersihkan dari Libraries/Banks, {clearedPlaylists} playlist direset dari Playlists/Library.");
 	}
 
 	private static bool BuildPresentation(Template.Types.Slide baseSlideTemplate, string songName, List<ParsedGroup> parsedGroups, string genre, string targetFile, ApplicationInfo appInfo)

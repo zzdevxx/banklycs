@@ -1,40 +1,42 @@
 import os
+import sqlite3
 from collections import defaultdict
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+DB_PATH = os.path.join(BASE_DIR, "database", "banklycs.db")
 
-txt_dir = os.path.join(BASE_DIR, "database")
-if not os.path.isdir(txt_dir):
-    txt_dir = os.path.join(BASE_DIR, "database")
-if not os.path.isdir(txt_dir):
-    txt_dir = os.path.join(BASE_DIR, "TXT")
-files = [f[:-4] for root, _, files in os.walk(txt_dir) for f in files if f.endswith(".txt")]
+conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+cur = conn.cursor()
+
+cur.execute("SELECT id, filename, title, artist, category FROM songs;")
+rows = cur.fetchall()
 
 titles = defaultdict(list)
 artists = defaultdict(list)
 no_artist_count = 0
 
-for f in files:
-    if " - " in f:
-        title, artist = f.split(" - ", 1)
-        titles[title.strip().lower()].append((title.strip(), artist.strip()))
-        artists[artist.strip()].append(title.strip())
+for sid, fname, title, artist, cat in rows:
+    clean_title = (title or "").strip()
+    clean_artist = (artist or "").strip()
+    titles[clean_title.lower()].append((clean_title, clean_artist or "NO_ARTIST"))
+    if clean_artist:
+        artists[clean_artist].append(clean_title)
     else:
         no_artist_count += 1
-        titles[f.strip().lower()].append((f.strip(), "NO_ARTIST"))
 
 same_title_diff_artist = {k: v for k, v in titles.items() if len(v) > 1}
-print(f"Total Unique Titles                     : {len(titles)}")
-print(f"File tanpa pemisah artist (' - ')       : {no_artist_count}")
-print(f"Judul sama dengan musisi/versi berbeda : {len(same_title_diff_artist)}")
-print(f"Total Artis/Buku Terdaftar              : {len(artists)}")
+print("==============================================================================")
+print(f"VERIFY TITLES & ARTISTS AUDIT (TOTAL: {len(rows):,} SONGS)")
+print("==============================================================================")
+print(f"Total Unique Titles                     : {len(titles):,}")
+print(f"Lagu tanpa artis terdaftar (Title Only) : {no_artist_count:,}")
+print(f"Judul sama dengan musisi/versi berbeda : {len(same_title_diff_artist):,}")
+print(f"Total Artis/Buku Terdaftar              : {len(artists):,}")
 
-print("\nContoh 12 Judul dengan Versi Terbanyak:")
-for t, versions in sorted(same_title_diff_artist.items(), key=lambda x: len(x[1]), reverse=True)[:12]:
+print("\nContoh 8 Judul dengan Versi Terbanyak:")
+for t, versions in sorted(same_title_diff_artist.items(), key=lambda x: len(x[1]), reverse=True)[:8]:
     print(f"\n  Judul: '{versions[0][0]}' ({len(versions)} versi):")
-    for _, art in versions:
+    for _, art in versions[:6]:
         print(f"    - {art}")
 
-print("\nTop 15 Kategori/Penyanyi dengan Lagu Terbanyak:")
-for art, songlist in sorted(artists.items(), key=lambda x: len(x[1]), reverse=True)[:15]:
-    print(f"  - {art}: {len(songlist)} lagu")
+conn.close()
