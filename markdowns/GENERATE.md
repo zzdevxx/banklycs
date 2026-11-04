@@ -2,8 +2,8 @@
 
 > **Proyek**: `banklycs` — Arsitektur Kompilasi On-Demand & Injeksi Cepat ProPresenter 7  
 > **Binary Utama**: `engine/banklycs.exe` (Single-file Native C# .NET 8, Google Protobuf + Embedded SQLite)  
-> **Master Database**: `database/banklycs.db` (SQLite Single-File dengan FTS5 Full-Text Search)  
-> **Terakhir diperbarui**: 2026-11-03
+> **Master Database**: `database/banklycs.db` (SQLite single-file; tabel `songs_fts` FTS5 dipakai untuk audit, bukan oleh runtime)  
+> **Terakhir diperbarui**: 2026-11-04
 
 ---
 

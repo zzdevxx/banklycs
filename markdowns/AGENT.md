@@ -108,3 +108,15 @@ Remove-Item engine\banklycs.dll, engine\banklycs.pdb, engine\banklycs.deps.json,
 | Empty artist | 3.970 | Sah per RULES §2.2 (judul saja bila pencipta tak diketahui) |
 
 Dedup memakai skor kelengkapan (jumlah header bagian + panjang lirik); yang dipertahankan adalah lirik yang lebih lengkap. Kalkulasi: 1.221 baris `(2)/(3)` yang menabrak `title+artist`, 104 varian `(KJ n)` yang bentrok dengan bentuk kanonis `Title - KJ n`, 12 baris `Ade Manahutu` duplikat, dan 45 lagu dengan homoglyph Sirkilik dinormalisasi ke Latin.
+
+### Outlier yang Diketahui (jangan "diperbaiki" tanpa sumber)
+
+22 lagu punya `content` < 100 karakter. Sebagian besar **sah**: doxology pendek seperti `Amin - KJ 476` dan `Haleluya - KJ 473` memang hanya satu baris. Tiga baris berikut **bukan lirik** dan perlu ditinjau saat maintenance:
+
+| Filename | Isi saat ini | Catatan |
+|---|---|---|
+| `It Is Well With My Soul.txt` | kredit penulis (Horatio Spafford / Philip Bliss) | Katalog Psalmnote punya `It Is Well With My Soul` versi JPCC Worship — **lagu berbeda**, bukan versi himne klasik. Jangan ganti otomatis. |
+| `Overture - Sari Simorangkir.txt` | `Overture (Opening)` | Sumber Psalmnote hanya berisi catatan panggung (`*Setelah Countdown acara langsung mulai*`). Tidak ada lirik otentik. |
+| `God is love - epic choir.txt` | dua baris fragmen | Tidak ada padanan di katalog Psalmnote. |
+
+**Aturan**: jangan mengarang atau menyalin versi lagu lain untuk menambal tiga baris ini. Doktrin nol-halusinasi (RULES §4) lebih penting daripada metrik kelengkapan. Perbaiki hanya bila ada sumber otentik yang cocok judul **dan** versinya.

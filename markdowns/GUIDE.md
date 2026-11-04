@@ -1,7 +1,7 @@
 # GUIDE — PANDUAN PENGGUNA, KONTRIBUSI & SCRAPING
 
 > **Proyek**: `banklycs` — Panduan Komprehensif Pengguna & Developer  
-> **Terakhir diperbarui**: 2026-11-03
+> **Terakhir diperbarui**: 2026-11-04
 
 ---
 
@@ -22,10 +22,10 @@ Semua gereja, persekutuan, dan relawan multimedia dipersilakan untuk berkontribu
 
 ### A. Prinsip Kontribusi
 - **DILARANG MENGGUNAKAN AI/LLM** untuk mengarang lirik lagu. Seluruh lirik harus berasal dari sumber otentik (buku nyanyian, rekaman ibadah resmi, atau situs lirik tepercaya).
-- Seluruh kontribusi lagu hanya ditambahkan ke `database/banklycs.db` (tabel `songs` + FTS5). Jangan mengirim file `.pro` manual melalui Pull Request; `.pro` dikompilasi on-demand setiap kali operator mengklik **INJECT**.
+- Seluruh kontribusi lagu hanya ditambahkan ke `database/banklycs.db` (tabel `songs`; tabel `songs_fts` dipakai untuk audit integritas, bukan runtime). Jangan mengirim file `.pro` manual melalui Pull Request; `.pro` dikompilasi on-demand setiap kali operator mengklik **INJECT**.
 
 ### B. Langkah Menambah Lagu
-1. Tambahkan baris ke `database/banklycs.db` (tabel `songs` + FTS5) dengan `filename` = `Judul Lagu - Nama Artis.txt` (atau `Judul Lagu.txt` jika artis tidak diketahui). Lihat struktur tabel di [`AGENT.md` §2.B](AGENT.md).
+1. Tambahkan baris ke `database/banklycs.db` (tabel `songs`) dengan `filename` = `Judul Lagu - Nama Artis.txt` (atau `Judul Lagu.txt` jika artis tidak diketahui). Lihat struktur tabel di [`AGENT.md` §2.B](AGENT.md).
 2. Isi `content` dengan format standar panggung:
    ```text
    BLANK
