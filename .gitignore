@@ -44,6 +44,7 @@ __pycache__/
 # Engine Output & Logs
 engine/last_errors.txt
 engine/last_port.txt
+engine/_run.log
 engine/test_export/
 
 # Archives & Large Backups
