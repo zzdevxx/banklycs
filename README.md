@@ -26,7 +26,7 @@
     - **PKJ** (Pelengkap Kidung Jemaat) — 399 lagu
     - **NKB** (Nyanyikanlah Kidung Baru) — 363 lagu
     - **NNBT** (Nyanyian Baru Bagi Tuhan) — 46 lagu
-    - **Kidung Pasamuwan Jawi** — 4 lagu
+    - **Kidung Pasamuwan Jawi** — 1 lagu
 - **Arsitektur Single-File Database (`database/banklycs.db`)**:
   - Semua 24.520 lagu tersimpan dalam **1 file SQLite tunggal (~61 MB)**.
   - Tidak ada lagi puluhan ribu file kecil yang memperlambat Windows NTFS atau proses transfer flashdisk USB.

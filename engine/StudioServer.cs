@@ -267,21 +267,36 @@ namespace Banklycs
                 string banklycsThemeFile = Path.Combine(banklycsThemeDir, "Theme");
                 string srcTemplate = Path.Combine(ProjectRoot, "engine", "ThemeTemplate");
 
+                // Bump when engine/ThemeTemplate content changes so existing installs re-inject once.
+                const string ThemeVersion = "2";
+                string versionMarker = Path.Combine(banklycsThemeDir, ".theme-version");
+
                 if (File.Exists(srcTemplate))
                 {
-                    // The official template ships Praise/Worship/Bible. A copy is only needed
-                    // when the file is missing, unreadable, or missing a slide the template has.
+                    // The official template ships Praise/Worship/Bible. A copy is needed when the
+                    // file is missing, a slide is missing, or the installed copy predates the
+                    // current template version (marker absent or older).
                     bool needCopy = !File.Exists(banklycsThemeFile);
                     if (!needCopy)
                     {
                         try
                         {
-                            byte[] bBytes = File.ReadAllBytes(banklycsThemeFile);
-                            var bDoc = Template.Types.Document.Parser.ParseFrom(bBytes);
-                            byte[] sBytes = File.ReadAllBytes(srcTemplate);
-                            var sDoc = Template.Types.Document.Parser.ParseFrom(sBytes);
-                            needCopy = sDoc.Slides.Any(src =>
-                                !bDoc.Slides.Any(s => s.Name.Equals(src.Name, StringComparison.OrdinalIgnoreCase)));
+                            string installedVersion = File.Exists(versionMarker)
+                                ? File.ReadAllText(versionMarker).Trim()
+                                : "";
+                            if (installedVersion != ThemeVersion)
+                            {
+                                needCopy = true;
+                            }
+                            else
+                            {
+                                byte[] bBytes = File.ReadAllBytes(banklycsThemeFile);
+                                var bDoc = Template.Types.Document.Parser.ParseFrom(bBytes);
+                                byte[] sBytes = File.ReadAllBytes(srcTemplate);
+                                var sDoc = Template.Types.Document.Parser.ParseFrom(sBytes);
+                                needCopy = sDoc.Slides.Any(src =>
+                                    !bDoc.Slides.Any(s => s.Name.Equals(src.Name, StringComparison.OrdinalIgnoreCase)));
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -295,12 +310,13 @@ namespace Banklycs
                         Directory.CreateDirectory(banklycsThemeDir);
                         if (File.Exists(banklycsThemeFile))
                         {
-                            string backup = banklycsThemeFile + ".bak-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
-                            File.Copy(banklycsThemeFile, backup, overwrite: false);
+                            string backup = banklycsThemeFile + ".bak";
+                            File.Copy(banklycsThemeFile, backup, overwrite: true);
                             Console.WriteLine($"[THEME] Backup tema lama: {backup}");
                         }
                         File.Copy(srcTemplate, banklycsThemeFile, overwrite: true);
-                        Console.WriteLine($"[THEME] Auto-injected official Banklycs Theme to ProPresenter: {banklycsThemeFile}");
+                        File.WriteAllText(versionMarker, ThemeVersion);
+                        Console.WriteLine($"[THEME] Auto-injected official Banklycs Theme v{ThemeVersion} to ProPresenter: {banklycsThemeFile}");
                     }
                 }
 
@@ -653,15 +669,26 @@ namespace Banklycs
                         }
 
                         var fontsDir = Environment.GetFolderPath(Environment.SpecialFolder.Fonts);
-                        bool cmgInstalled = File.Exists(Path.Combine(fontsDir, "CMGSans-Bold.ttf"));
+                        // Per-user installs (double-click TTF -> "Install for me") live in
+                        // %LOCALAPPDATA%\Microsoft\Windows\Fonts, not the system Fonts dir.
+                        string userFontsDir = Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                            "Microsoft", "Windows", "Fonts");
+                        bool FileExistsInFonts(string name) =>
+                            File.Exists(Path.Combine(fontsDir, name)) || File.Exists(Path.Combine(userFontsDir, name));
+
+                        bool cmgInstalled = FileExistsInFonts("CMGSans-Bold.ttf");
+                        bool timesNormalInstalled = FileExistsInFonts("Times New Normal Regular.ttf") ||
+                                                    FileExistsInFonts("TimesNewNormal-Regular.ttf");
                         bool timesInstalled = File.Exists(Path.Combine(fontsDir, "times.ttf"));
-                        bool arialInstalled = File.Exists(Path.Combine(fontsDir, "arial.ttf"));
+                        bool arialInstalled = FileExistsInFonts("arial.ttf");
 
                         SendJson(req, res, new
                         {
                             active_theme = Program.ActiveSlideTemplateName,
                             cmg_font_installed = cmgInstalled,
                             times_font_installed = timesInstalled,
+                            times_normal_installed = timesNormalInstalled,
                             arial_font_installed = arialInstalled,
                             themes = themeList,
                             propresenter_dir = ProPresenterDir

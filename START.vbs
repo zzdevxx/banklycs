@@ -45,7 +45,7 @@ serverUrl = "http://127.0.0.1:" & port
 
 ' 3. Bring existing window to focus or launch single instance
 If isEdgeRunning Then
-    WshShell.AppActivate "ProPresenter7 - Lyric Injector"
+    WshShell.AppActivate "Banklycs - Studio Console"
 Else
     WshShell.Run "msedge.exe --app=" & serverUrl & " --start-maximized", 3, False
 End If

@@ -188,11 +188,13 @@
       if (fontBadge) {
         if (data.cmg_font_installed) {
           fontBadge.className = 'settings-tag-ok';
-          fontBadge.textContent = '✓ CMG Sans Terpasang';
+          fontBadge.textContent = data.times_normal_installed === false
+            ? '⚠ Times New Normal Belum Terpasang (fallback: Times New Roman)'
+            : '✓ CMG Sans + Times New Normal Terpasang';
           if (installFontBtn) installFontBtn.classList.add('hidden');
         } else {
           fontBadge.className = 'settings-tag-warning';
-          fontBadge.textContent = '⚠ CMG Sans Belum Terpasang';
+          fontBadge.textContent = '⚠ CMG Sans Belum Terpasang (Worship fallback: Times New Roman)';
           if (installFontBtn) installFontBtn.classList.remove('hidden');
         }
       }

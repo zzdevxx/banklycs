@@ -892,7 +892,7 @@ body.pro-app {
 }
 
 .pro-slide-text.font-worship {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Times New Normal', 'Times New Roman', Times, serif;
   font-weight: 400;
   font-size: calc(5.21cqw * var(--pro-scale) / 1.2);
   letter-spacing: 0.02em;
@@ -1383,7 +1383,7 @@ body.pro-app {
 }
 
 .preview-text-box.font-worship {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: 'Times New Normal', 'Times New Roman', Times, serif;
   font-size: calc(5.21cqw * var(--pro-scale) / 1.2);
   font-weight: 400;
   letter-spacing: 0.02em;
