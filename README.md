@@ -7,6 +7,8 @@
 [![Engine](https://img.shields.io/badge/Engine-C%23%20.NET%208%20Native-purple?style=flat-square&logo=dotnet)](https://github.com/zzdevxx/banklycs)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
+> 📍 **Repo ini = Banklycs v1 (START.vbs + Edge app-mode).** Pengembangan v2 (app native WPF + installer) pindah ke repo terpisah: **banklycs-v2**.
+>
 > **Koleksi 24.520 Lagu Rohani & Himne Siap Tayang untuk ProPresenter 7.**  
 > Dirancang khusus untuk tim multimedia gereja, operator proyektor, dan worship leader agar **tidak perlu lagi mencari & *copy-paste* lirik dari browser saat ibadah.**  
 > 🌐 **Live Portal & Web Simulator:** [https://zzdevxx.github.io/banklycs-download/](https://zzdevxx.github.io/banklycs-download/)
