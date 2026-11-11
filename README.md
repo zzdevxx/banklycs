@@ -66,4 +66,4 @@ Dua jalur pembaruan terpisah, keduanya bisa dimatikan/dinyalakan di **Settings**
 
 - **Database murni dari maintainer** — tidak dapat diedit dari aplikasi. Perbaikan/custom lagu dilakukan langsung di ProPresenter 7.
 - **Proteksi Editan ProPresenter** (default ON): file `.pro` yang sudah disunting operator di ProPresenter tidak akan ditimpa saat inject ulang; lagu yang dilewati tetap masuk playlist dan dilaporkan di dialog inject.
-- Alur update database untuk maintainer: perbarui `banklycs.db` → perbarui `db_manifest.json` → commit + attach DB ke release dengan nama **`banklycs-db-<YYYY-MM-DD-HH-MM-SS>.db`** (stamp UTC, identik dengan field `version`) → klien mendeteksi otomatis. Field `version` tetap ISO UTC agar kompatibel dengan parser engine.
+- Alur update database untuk maintainer: perbarui `banklycs.db` → perbarui `db_manifest.json` → commit + attach DB ke release dengan nama **`database_<YYYY-MM-DD_HH-MM-SS>.db`** (stamp UTC, identik dengan field `version`) → klien mendeteksi otomatis. Field `version` tetap ISO UTC agar kompatibel dengan parser engine.
