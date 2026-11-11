@@ -1,20 +1,33 @@
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
+using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
 using Microsoft.Web.WebView2.Core;
+using WF = System.Windows.Forms;
 
 namespace Banklycs.App;
 
 public partial class MainWindow : Window
 {
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private WF.NotifyIcon? _trayIcon;
+    private bool _trayHintShown;
+    private bool _realExit;
+
     public MainWindow()
     {
         InitializeComponent();
         Loaded += OnLoaded;
+        StateChanged += (_, _) => { if (WindowState == WindowState.Minimized) HideToTray(); };
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        SetupTrayIcon();
+        _ = Task.Run(CheckForUpdateAsync);
+
         try
         {
             // Keep WebView2 data (cache, localStorage) per-user so the app stays
@@ -71,6 +84,122 @@ public partial class MainWindow : Window
         WebView.NavigationCompleted += (s, args) =>
             Dispatcher.Invoke(() => LoadingOverlay.Visibility = Visibility.Collapsed);
     }
+
+    // ---------- Tray icon & close-to-tray ----------
+
+    private void SetupTrayIcon()
+    {
+        _trayIcon = new WF.NotifyIcon
+        {
+            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Process.GetCurrentProcess().MainModule!.FileName!),
+            Text = $"Banklycs v{GetAppVersion()} — Studio Console",
+            Visible = true
+        };
+        _trayIcon.DoubleClick += (_, _) => RestoreFromTray();
+
+        var menu = new WF.ContextMenuStrip();
+        menu.Items.Add("Buka Banklycs", null, (_, _) => RestoreFromTray());
+        menu.Items.Add(new WF.ToolStripSeparator());
+        menu.Items.Add("Keluar", null, (_, _) => ExitApplication());
+        _trayIcon.ContextMenuStrip = menu;
+    }
+
+    private void HideToTray()
+    {
+        Hide();
+        if (!_trayHintShown)
+        {
+            _trayHintShown = true;
+            _trayIcon?.ShowBalloonTip(4000, "Banklycs masih berjalan",
+                "Aplikasi tetap aktif di system tray. Klik dua kali ikon untuk membuka kembali.",
+                WF.ToolTipIcon.Info);
+        }
+    }
+
+    public void RestoreFromTray()
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+        Focus();
+    }
+
+    private void ExitApplication()
+    {
+        _realExit = true;
+        _trayIcon?.Dispose();
+        System.Windows.Application.Current.Shutdown();
+    }
+
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        // The X button hides to tray (like ProPresenter); only the tray menu exits.
+        if (!_realExit)
+        {
+            e.Cancel = true;
+            HideToTray();
+            return;
+        }
+        base.OnClosing(e);
+    }
+
+    // ---------- Auto-update check (GitHub Releases) ----------
+
+    private static string GetAppVersion()
+    {
+        return System.Reflection.Assembly.GetExecutingAssembly()
+            .GetName().Version?.ToString(3) ?? "0.0.0";
+    }
+
+    private async Task CheckForUpdateAsync()
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get,
+                "https://api.github.com/repos/zzdevxx/banklycs/releases/latest");
+            req.Headers.UserAgent.ParseAdd("Banklycs-App");
+            using var res = await Http.SendAsync(req);
+            if (!res.IsSuccessStatusCode) return;
+
+            using var stream = await res.Content.ReadAsStreamAsync();
+            using var doc = await JsonDocument.ParseAsync(stream);
+            string? tag = doc.RootElement.GetProperty("tag_name").GetString();
+            if (string.IsNullOrWhiteSpace(tag)) return;
+
+            // Release tags follow the owner's scheme: v1.0, v1.1, v2.0 (+0.1 per update).
+            // Current assembly version 2.0.0 is normalized to the same 2.0 form.
+            string digits = tag.TrimStart('v', 'V');
+            if (!double.TryParse(digits, System.Globalization.CultureInfo.InvariantCulture, out double latest)) return;
+            var asmVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version!;
+            double current = asmVersion.Major + asmVersion.Minor / 10.0;
+
+            if (latest > current)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    _trayIcon?.ShowBalloonTip(8000, "Update Banklycs tersedia",
+                        $"Versi baru {tag} sudah rilis. Klik untuk membuka halaman unduhan.",
+                        WF.ToolTipIcon.Info);
+                });
+                _trayIcon!.BalloonTipClicked += (_, _) =>
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(
+                            "https://github.com/zzdevxx/banklycs/releases/latest")
+                        { UseShellExecute = true });
+                    }
+                    catch { /* ignore */ }
+                };
+            }
+        }
+        catch
+        {
+            // Offline or API hiccup: the check must never disturb the operator.
+        }
+    }
+
+    // ---------- Engine bootstrap ----------
 
     private static async Task<int> WaitForPortAsync(string portFile, TimeSpan timeout)
     {
