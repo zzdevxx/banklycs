@@ -1,9 +1,9 @@
-; Banklycs v2.0.0 — Inno Setup script
+; Banklycs v2.1.0 — Inno Setup script
 ; Per-user install (no UAC), LZMA2 max compression.
 ; Compile: ISCC.exe banklycs.iss  (payload must exist in dist\staging\)
 
 #define MyAppName "Banklycs"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.1.0"
 #define MyAppPublisher "zzdevxx"
 #define MyAppExeName "Banklycs.App.exe"
 #define MyAppID "{{8F4A2D61-9C3E-4B7A-A1D5-2E6F80B3C942}}"
