@@ -51,3 +51,9 @@ engine/test_export/
 *.zip
 *.tar.gz
 *.7z
+
+
+# Build & installer artifacts
+desktop/dist/
+desktop/bin/
+desktop/obj/
