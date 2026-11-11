@@ -1,0 +1,28 @@
+# ==============================================================================
+# Banklycs v2 - .gitignore
+# ==============================================================================
+
+# OS & Environment
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.tmp
+
+# Build & installer artifacts
+desktop/bin/
+desktop/obj/
+desktop/dist/
+engine/bin/
+engine/obj/
+
+# Runtime state
+engine/last_port.txt
+
+# Archives & Large Backups
+*.zip
+*.tar.gz
+*.7z
+
+# Secrets & local config
+*.age
+.env
