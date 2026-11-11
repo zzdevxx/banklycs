@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -60,6 +63,19 @@ namespace Banklycs
         private static string ProDir = "";
         private static string AppDir = "";
         private static string? ProPresenterDir = null;
+
+        // ----- Settings + dual update channels (app v2.x / database timestamp) -----
+        private const string AppVersion = "2.1";
+        private const string AppReleaseApiUrl = "https://api.github.com/repos/zzdevxx/banklycs-v2/releases/latest";
+        private const string DbManifestRemoteUrl = "https://raw.githubusercontent.com/zzdevxx/banklycs-v2/master/database/db_manifest.json";
+        private static readonly HttpClient UpdateHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        private static string ConfigDir = "";
+        private static string ConfigPath = "";
+        private static string InjectStatePath = "";
+        private static Dictionary<string, string> InjectState = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private static bool AppAutoCheck = true;
+        private static bool DbAutoCheck = true;
+        private static bool ProtectUserEdits = true;
 
         private static readonly Regex HeaderRegex = new Regex(
             @"^(BLANK|INTRO|VERSE(\s+\d+)?|PRE[\s\-]*CHORUS(\s+\d+)?|CHORUS(\s+\d+)?|BRIDGE(\s+\d+)?|TAG|INTERLUDE|ENDING|OUTRO)$",
@@ -356,6 +372,135 @@ namespace Banklycs
             }
         }
 
+        // ==========================================================
+        // Settings persistence, update channels, inject protection
+        // ==========================================================
+
+        private static string DbManifestLocalPath => Path.Combine(
+            Path.GetDirectoryName(DatabasePath) ?? ProjectRoot, "db_manifest.json");
+
+        private static void LoadAppConfig()
+        {
+            try
+            {
+                if (!File.Exists(ConfigPath)) return;
+                using var doc = JsonDocument.Parse(File.ReadAllText(ConfigPath));
+                if (doc.RootElement.TryGetProperty("app_auto_check", out var a)) AppAutoCheck = a.GetBoolean();
+                if (doc.RootElement.TryGetProperty("db_auto_check", out var b)) DbAutoCheck = b.GetBoolean();
+                if (doc.RootElement.TryGetProperty("protect_user_edits", out var c)) ProtectUserEdits = c.GetBoolean();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARN] config.json tidak valid, memakai default: {ex.Message}");
+            }
+        }
+
+        private static void SaveAppConfig()
+        {
+            try
+            {
+                Directory.CreateDirectory(ConfigDir);
+                var obj = new { app_auto_check = AppAutoCheck, db_auto_check = DbAutoCheck, protect_user_edits = ProtectUserEdits };
+                File.WriteAllText(ConfigPath, JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true }));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARN] Gagal menyimpan config: {ex.Message}");
+            }
+        }
+
+        private static void LoadInjectState()
+        {
+            try
+            {
+                if (!File.Exists(InjectStatePath)) return;
+                var loaded = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(InjectStatePath));
+                if (loaded != null) InjectState = new Dictionary<string, string>(loaded, StringComparer.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                // Corrupt state: start empty. Protection then treats every existing
+                // file as possibly user-edited, which is the safe direction.
+            }
+        }
+
+        private static void SaveInjectState()
+        {
+            try
+            {
+                Directory.CreateDirectory(ConfigDir);
+                File.WriteAllText(InjectStatePath, JsonSerializer.Serialize(InjectState));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARN] Gagal menyimpan inject state: {ex.Message}");
+            }
+        }
+
+        private static string Sha256File(string path)
+        {
+            using var stream = File.OpenRead(path);
+            return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
+        }
+
+        private sealed class DbManifest
+        {
+            public string version { get; set; } = "";
+            public string sha256 { get; set; } = "";
+            public long size { get; set; }
+            public string url { get; set; } = "";
+        }
+
+        private static DbManifest? ReadLocalDbManifest()
+        {
+            try
+            {
+                if (!File.Exists(DbManifestLocalPath)) return null;
+                return JsonSerializer.Deserialize<DbManifest>(File.ReadAllText(DbManifestLocalPath),
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch { return null; }
+        }
+
+        private static DbManifest? FetchRemoteDbManifest()
+        {
+            try
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Get, DbManifestRemoteUrl);
+                req.Headers.UserAgent.ParseAdd("Banklycs-Engine");
+                using var res = UpdateHttp.SendAsync(req).GetAwaiter().GetResult();
+                if (!res.IsSuccessStatusCode) return null;
+                string body = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                return JsonSerializer.Deserialize<DbManifest>(body,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch { return null; }
+        }
+
+        private static (string latestTag, bool available, string error) CheckLatestAppRelease()
+        {
+            try
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Get, AppReleaseApiUrl);
+                req.Headers.UserAgent.ParseAdd("Banklycs-Engine");
+                using var res = UpdateHttp.SendAsync(req).GetAwaiter().GetResult();
+                if (!res.IsSuccessStatusCode) return ("", false, $"GitHub API HTTP {(int)res.StatusCode}");
+                string body = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                using var doc = JsonDocument.Parse(body);
+                string? tag = doc.RootElement.GetProperty("tag_name").GetString();
+                if (string.IsNullOrWhiteSpace(tag)) return ("", false, "Tag rilis tidak terbaca");
+                string digits = tag.TrimStart('v', 'V');
+                if (!double.TryParse(digits, CultureInfo.InvariantCulture, out double latest))
+                    return ("", false, $"Tag tidak dikenali: {tag}");
+                if (!double.TryParse(AppVersion, CultureInfo.InvariantCulture, out double current)) current = 0;
+                return (tag, latest > current, "");
+            }
+            catch (Exception ex)
+            {
+                return ("", false, ex.Message);
+            }
+        }
+
         public static void Start(string rootPath, int preferredPort = 5050, bool openBrowser = true)
         {
             ProjectRoot = rootPath;
@@ -373,6 +518,12 @@ namespace Banklycs
             AppDir = Path.Combine(ProjectRoot, "app");
             ProPresenterDir = ResolveProPresenterDir();
             EnsureProPresenterBanklycsTheme();
+
+            ConfigDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Banklycs");
+            ConfigPath = Path.Combine(ConfigDir, "config.json");
+            InjectStatePath = Path.Combine(ConfigDir, "inject_state.json");
+            LoadAppConfig();
+            LoadInjectState();
 
             LoadCatalog();
 
@@ -595,9 +746,75 @@ namespace Banklycs
                             propresenter_dir = ProPresenterDir,
                             banks_count = banksCount,
                             project_root = ProjectRoot,
-                            db_path = DatabasePath
+                            db_path = DatabasePath,
+                            app_version = AppVersion,
+                            db_version = ReadLocalDbManifest()?.version ?? "",
+                            protect_user_edits = ProtectUserEdits
                         };
                         SendJson(req, res, statusData);
+                        return;
+                    }
+
+                    if (rawPath.Equals("/api/settings", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var settingsManifest = ReadLocalDbManifest();
+                        SendJson(req, res, new
+                        {
+                            app_version = AppVersion,
+                            db_version = settingsManifest?.version ?? "",
+                            app_auto_check = AppAutoCheck,
+                            db_auto_check = DbAutoCheck,
+                            protect_user_edits = ProtectUserEdits
+                        });
+                        return;
+                    }
+
+                    if (rawPath.Equals("/api/update/app", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var (latestTag, appAvailable, appError) = CheckLatestAppRelease();
+                        SendJson(req, res, new
+                        {
+                            current = AppVersion,
+                            latest = latestTag,
+                            update_available = appAvailable,
+                            url = "https://github.com/zzdevxx/banklycs-v2/releases/latest",
+                            error = appError
+                        });
+                        return;
+                    }
+
+                    if (rawPath.Equals("/api/update/db", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var localManifest = ReadLocalDbManifest();
+                        var remoteManifest = FetchRemoteDbManifest();
+                        bool dbAvailable = false;
+                        string dbError = "";
+                        if (remoteManifest == null)
+                        {
+                            dbError = "Tidak dapat mengambil manifest database (offline?)";
+                        }
+                        else if (localManifest == null || string.IsNullOrEmpty(localManifest.version))
+                        {
+                            dbError = "Manifest database lokal tidak ditemukan";
+                        }
+                        else if (DateTime.TryParse(localManifest.version, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var localVersion) &&
+                                 DateTime.TryParse(remoteManifest.version, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var remoteVersion))
+                        {
+                            dbAvailable = remoteVersion > localVersion;
+                        }
+                        else
+                        {
+                            dbError = "Format versi database tidak valid";
+                        }
+
+                        SendJson(req, res, new
+                        {
+                            current_version = localManifest?.version ?? "",
+                            latest_version = remoteManifest?.version ?? "",
+                            size = remoteManifest?.size ?? 0,
+                            update_available = dbAvailable,
+                            error = dbError
+                        });
                         return;
                     }
 
@@ -890,6 +1107,8 @@ namespace Banklycs
                         rawPath.Equals("/api/font/install", StringComparison.OrdinalIgnoreCase) ||
                         rawPath.Equals("/api/reload", StringComparison.OrdinalIgnoreCase) ||
                         rawPath.Equals("/api/themes/select", StringComparison.OrdinalIgnoreCase) ||
+                        rawPath.Equals("/api/settings", StringComparison.OrdinalIgnoreCase) ||
+                        rawPath.Equals("/api/update/db/apply", StringComparison.OrdinalIgnoreCase) ||
                         rawPath.Equals("/api/inject", StringComparison.OrdinalIgnoreCase))
                     {
                         SendProblem(req, res, 405, "Method Not Allowed", "Endpoint mutasi wajib dipanggil menggunakan HTTP POST.");
@@ -906,6 +1125,92 @@ namespace Banklycs
                 // ==========================================================
                 if (req.HttpMethod.Equals("POST", StringComparison.OrdinalIgnoreCase))
                 {
+                    if (rawPath.Equals("/api/settings", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string? settingsBody = ReadBodyWithLimit(req, 4_000);
+                        if (settingsBody == null)
+                        {
+                            SendProblem(req, res, 413, "Payload Too Large", "Payload settings terlalu besar.");
+                            return;
+                        }
+                        try
+                        {
+                            using var doc = JsonDocument.Parse(settingsBody);
+                            if (doc.RootElement.TryGetProperty("app_auto_check", out var a)) AppAutoCheck = a.GetBoolean();
+                            if (doc.RootElement.TryGetProperty("db_auto_check", out var b)) DbAutoCheck = b.GetBoolean();
+                            if (doc.RootElement.TryGetProperty("protect_user_edits", out var c)) ProtectUserEdits = c.GetBoolean();
+                            SaveAppConfig();
+                        }
+                        catch (Exception ex)
+                        {
+                            SendProblem(req, res, 400, "Bad Request", $"JSON settings tidak valid: {ex.Message}");
+                            return;
+                        }
+                        SendJson(req, res, new
+                        {
+                            success = true,
+                            app_auto_check = AppAutoCheck,
+                            db_auto_check = DbAutoCheck,
+                            protect_user_edits = ProtectUserEdits
+                        });
+                        return;
+                    }
+
+                    if (rawPath.Equals("/api/update/db/apply", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var remoteManifest = FetchRemoteDbManifest();
+                        if (remoteManifest == null || string.IsNullOrEmpty(remoteManifest.url))
+                        {
+                            SendProblem(req, res, 502, "Bad Gateway", "Manifest database tidak dapat diambil (offline?).");
+                            return;
+                        }
+
+                        string tempDb = DatabasePath + ".update-tmp";
+                        try
+                        {
+                            using (var downloadReq = new HttpRequestMessage(HttpMethod.Get, remoteManifest.url))
+                            {
+                                downloadReq.Headers.UserAgent.ParseAdd("Banklycs-Engine");
+                                using var downloadRes = UpdateHttp.SendAsync(downloadReq).GetAwaiter().GetResult();
+                                downloadRes.EnsureSuccessStatusCode();
+                                using var stream = downloadRes.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
+                                using var file = new FileStream(tempDb, FileMode.Create, FileAccess.Write, FileShare.None);
+                                stream.CopyTo(file);
+                            }
+
+                            string actualHash = Sha256File(tempDb);
+                            if (!string.Equals(actualHash, remoteManifest.sha256, StringComparison.OrdinalIgnoreCase))
+                            {
+                                File.Delete(tempDb);
+                                SendProblem(req, res, 502, "Checksum Mismatch", "File database yang diunduh gagal verifikasi SHA-256. Unduhan dibatalkan, database lama tetap utuh.");
+                                return;
+                            }
+
+                            // Atomic swap: keep a one-step-back backup, replace the DB,
+                            // then mirror the remote manifest locally as the new version record.
+                            string backup = DatabasePath + ".bak";
+                            if (File.Exists(DatabasePath)) File.Copy(DatabasePath, backup, overwrite: true);
+                            File.Move(tempDb, DatabasePath, overwrite: true);
+                            File.WriteAllText(DbManifestLocalPath,
+                                JsonSerializer.Serialize(remoteManifest, new JsonSerializerOptions { WriteIndented = true }));
+
+                            LoadCatalog();
+
+                            SendJson(req, res, new
+                            {
+                                success = true,
+                                db_version = remoteManifest.version,
+                                total_songs = Catalog.Count
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            try { File.Delete(tempDb); } catch { }
+                            SendProblem(req, res, 500, "Update Failed", $"Gagal memperbarui database: {ex.Message}");
+                        }
+                        return;
+                    }
+
                     if (rawPath.Equals("/api/reload", StringComparison.OrdinalIgnoreCase))
                     {
                         LoadCatalog();
@@ -1134,7 +1439,9 @@ namespace Banklycs
                         {
                             int compiledCount = 0;
                             List<string> missingFiles = new List<string>();
+                            List<string> skippedModified = new List<string>();
                             var compiledThisRun = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                            var playlistEligible = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                             SqliteConnection? dbConn = null;
                             if (File.Exists(DatabasePath))
@@ -1172,6 +1479,24 @@ namespace Banklycs
                                     string safeBaseName = SanitizeDiskFileName(cleanName);
                                     string proFileName = safeBaseName + ".pro";
                                     string dstFile = Path.Combine(libBanks, proFileName);
+
+                                    // Protection: never silently overwrite a .pro file the
+                                    // operator edited inside ProPresenter. A file counts as
+                                    // "ours" only when its bytes still match what we injected
+                                    // last time; anything else is treated as a user edit.
+                                    if (ProtectUserEdits && File.Exists(dstFile))
+                                    {
+                                        string currentHash = Sha256File(dstFile);
+                                        InjectState.TryGetValue(proFileName, out string? injectedHash);
+                                        if (injectedHash == null || !injectedHash.Equals(currentHash, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            skippedModified.Add(proFileName);
+                                            // The edited file still exists in the library, so it
+                                            // stays playlist-eligible — just not overwritten.
+                                            playlistEligible.Add(proFileName);
+                                            continue;
+                                        }
+                                    }
 
                                     bool compiled = false;
                                     string songTitle = cleanName;
@@ -1229,6 +1554,7 @@ namespace Banklycs
                                     {
                                         compiledCount++;
                                         compiledThisRun.Add(proFileName);
+                                        InjectState[proFileName] = Sha256File(dstFile);
                                     }
                                     else
                                     {
@@ -1240,6 +1566,8 @@ namespace Banklycs
                             {
                                 dbConn?.Dispose();
                             }
+
+                            SaveInjectState();
 
                             // IN-PROCESS ATOMIC CALL TO CREATE PLAYLIST
                             // Register only songs compiled/verified in this exact execution
@@ -1253,7 +1581,7 @@ namespace Banklycs
                                 else if (c.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
                                     c = c.Substring(0, c.Length - 4);
                                 string safeC = SanitizeDiskFileName(c) + ".pro";
-                                if (compiledThisRun.Contains(safeC))
+                                if (compiledThisRun.Contains(safeC) || playlistEligible.Contains(safeC))
                                 {
                                     songNamesForPlaylist.Add(safeC);
                                 }
@@ -1264,6 +1592,13 @@ namespace Banklycs
                                 Program.CreatePlaylistDirect(playlistDocPath, data.name, songNamesForPlaylist, libBanks);
                             }
 
+                            string outputMsg = $"[OK] Playlist '{data.name}': {compiledCount} dari {data.songs.Count} lagu dikompilasi";
+                            if (skippedModified.Count > 0)
+                                outputMsg += $", {skippedModified.Count} dilewati (sudah diedit di ProPresenter)";
+                            if (missingFiles.Count > 0)
+                                outputMsg += $", {missingFiles.Count} gagal";
+                            outputMsg += ".";
+
                             var injectResult = new
                             {
                                 success = missingFiles.Count == 0,
@@ -1271,10 +1606,10 @@ namespace Banklycs
                                 playlist = data.name,
                                 songs_count = data.songs.Count,
                                 compiled_to_library = compiledCount,
+                                skipped_modified = skippedModified,
+                                skipped_count = skippedModified.Count,
                                 missing_in_pro = missingFiles,
-                                engine_output = missingFiles.Count == 0
-                                    ? $"[OK] Playlist '{data.name}' berhasil disuntikkan secara on-demand ({data.songs.Count} lagu)!"
-                                    : $"[WARN] Playlist '{data.name}' parsial: {compiledCount} dari {data.songs.Count} lagu terkompilasi."
+                                engine_output = outputMsg
                             };
 
                             SendJson(req, res, injectResult, missingFiles.Count == data.songs.Count ? 500 : 200);

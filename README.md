@@ -54,3 +54,16 @@ Installer **per-user tanpa UAC** (`%LOCALAPPDATA%\Programs\Banklycs`), shortcut 
 ## 📜 Lisensi
 
 MIT © 2026 Andreas Restuawanta Christwara ([@zzdevxx](https://github.com/zzdevxx)).
+
+## Sistem Pembaruan (v2.1+)
+
+Dua jalur pembaruan terpisah, keduanya bisa dimatikan/dinyalakan di **Settings**:
+
+| Jalur | Versi | Sumber | Mekanisme |
+|---|---|---|---|
+| **Aplikasi** | `v2.0`, `v2.1`, ... (+0.1) | GitHub Releases `banklycs-v2` | Notifikasi tray + tombol *Periksa Sekarang* di Settings |
+| **Database** | timestamp UTC (mis. `2026-11-11T23:22:51Z`) | `database/db_manifest.json` di repo master | Unduh + verifikasi SHA-256 + swap atomik + reload katalog, tanpa restart |
+
+- **Database murni dari maintainer** — tidak dapat diedit dari aplikasi. Perbaikan/custom lagu dilakukan langsung di ProPresenter 7.
+- **Proteksi Editan ProPresenter** (default ON): file `.pro` yang sudah disunting operator di ProPresenter tidak akan ditimpa saat inject ulang; lagu yang dilewati tetap masuk playlist dan dilaporkan di dialog inject.
+- Alur update database untuk maintainer: perbarui `banklycs.db` → perbarui `db_manifest.json` (version/sha256/size/url) → commit + attach DB baru ke release → klien mendeteksi otomatis.

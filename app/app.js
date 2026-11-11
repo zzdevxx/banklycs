@@ -745,8 +745,18 @@
 
       const data = await res.json();
       const missing = Array.isArray(data.missing_in_pro) ? data.missing_in_pro : [];
+      const skipped = Array.isArray(data.skipped_modified) ? data.skipped_modified : [];
       const compiledCount = (typeof data.compiled_to_library === 'number') ? data.compiled_to_library : (data.songs_count || 0);
       if (missing.length === 0 && (res.ok || data.success)) {
+        const skippedBox = skipped.length
+          ? `<div class="modal-missing-box">
+              <p class="modal-missing-title"><strong>Dilewati — sudah diedit di ProPresenter (${skipped.length}):</strong></p>
+              <ul class="modal-missing-list">
+                ${skipped.map(m => `<li>${escapeHtml(m)}</li>`).join('')}
+              </ul>
+              <p style="margin-top:6px;">Editanmu di ProPresenter dipertahankan. Matikan proteksi di Settings bila tetap ingin menimpa.</p>
+            </div>`
+          : '';
         showModal(
           'Injection Successful',
           `
@@ -756,7 +766,9 @@
             <div class="modal-detail-box">
               <p><strong>Songs in Playlist:</strong> ${data.songs_count} songs</p>
               <p><strong>Compiled to Banks:</strong> ${compiledCount} presentations</p>
+              ${skipped.length ? `<p><strong>Protected (skipped):</strong> ${skipped.length}</p>` : ''}
             </div>
+            ${skippedBox}
             <div class="modal-note">
               Open <strong>ProPresenter 7</strong>. The playlist is active under Library Playlists and ready for live presentation immediately without restart.
             </div>
@@ -795,6 +807,163 @@
       injectBtn.setAttribute('aria-disabled', injectBtn.disabled ? 'true' : 'false');
       injectBtn.innerHTML = '<span>INJECT</span>';
     }
+  }
+
+  // ============================================================
+  // Update center: dual channels (app v2.x / database timestamp)
+  // ============================================================
+
+  function formatDbVersion(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) +
+      ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function formatBytes(bytes) {
+    if (!bytes) return '';
+    return (bytes / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB';
+  }
+
+  async function loadUpdateSettings() {
+    const appVersionEl = document.getElementById('settings-app-version');
+    const dbVersionEl = document.getElementById('settings-db-version');
+    const appAutoEl = document.getElementById('settings-app-auto');
+    const dbAutoEl = document.getElementById('settings-db-auto');
+    const protectEl = document.getElementById('settings-protect');
+    const appResult = document.getElementById('app-update-result');
+    const dbResult = document.getElementById('db-update-result');
+    const appLink = document.getElementById('app-update-link');
+    const dbApply = document.getElementById('db-apply-btn');
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      if (appVersionEl) appVersionEl.textContent = 'v' + (data.app_version || '—');
+      if (dbVersionEl) dbVersionEl.textContent = formatDbVersion(data.db_version);
+      if (appAutoEl) appAutoEl.checked = !!data.app_auto_check;
+      if (dbAutoEl) dbAutoEl.checked = !!data.db_auto_check;
+      if (protectEl) protectEl.checked = !!data.protect_user_edits;
+    } catch {
+      if (appResult) { appResult.hidden = false; appResult.textContent = 'Engine tidak merespons.'; }
+      return;
+    }
+    if (appResult) appResult.hidden = true;
+    if (dbResult) dbResult.hidden = true;
+    if (appLink) appLink.classList.add('hidden');
+    if (dbApply) dbApply.classList.add('hidden');
+  }
+
+  async function saveUpdateFlag(key, value) {
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value })
+      });
+      showToast(value ? 'Diaktifkan' : 'Dimatikan');
+    } catch {
+      showToast('Gagal menyimpan setting');
+    }
+  }
+
+  async function recheckAppUpdate() {
+    const result = document.getElementById('app-update-result');
+    const link = document.getElementById('app-update-link');
+    const btn = document.getElementById('app-recheck-btn');
+    if (!result || !btn) return;
+    btn.disabled = true;
+    result.hidden = false;
+    result.textContent = 'Memeriksa rilis terbaru...';
+    try {
+      const res = await fetch('/api/update/app');
+      const data = await res.json();
+      if (data.error) {
+        result.textContent = '⚠ ' + data.error;
+      } else if (data.update_available) {
+        result.textContent = `✓ Update tersedia: ${data.latest} (terpasang v${data.current})`;
+        if (link) link.classList.remove('hidden');
+      } else {
+        result.textContent = `✓ Sudah versi terbaru (v${data.current})`;
+        if (link) link.classList.add('hidden');
+      }
+    } catch {
+      result.textContent = '⚠ Koneksi ke engine gagal.';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function recheckDbUpdate() {
+    const result = document.getElementById('db-update-result');
+    const applyBtn = document.getElementById('db-apply-btn');
+    const btn = document.getElementById('db-recheck-btn');
+    if (!result || !btn) return;
+    btn.disabled = true;
+    result.hidden = false;
+    result.textContent = 'Memeriksa katalog terbaru...';
+    try {
+      const res = await fetch('/api/update/db');
+      const data = await res.json();
+      if (data.error) {
+        result.textContent = '⚠ ' + data.error;
+        if (applyBtn) applyBtn.classList.add('hidden');
+      } else if (data.update_available) {
+        result.innerHTML = `✓ Katalog baru tersedia: <strong>${formatDbVersion(data.latest_version)}</strong> ` +
+          `(terpasang ${formatDbVersion(data.current_version)})${data.size ? ' — ' + formatBytes(data.size) : ''}`;
+        if (applyBtn) applyBtn.classList.remove('hidden');
+      } else {
+        result.textContent = `✓ Database sudah versi terbaru (${formatDbVersion(data.current_version)})`;
+        if (applyBtn) applyBtn.classList.add('hidden');
+      }
+    } catch {
+      result.textContent = '⚠ Koneksi ke engine gagal.';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function applyDbUpdate() {
+    const result = document.getElementById('db-update-result');
+    const applyBtn = document.getElementById('db-apply-btn');
+    if (!result || !applyBtn) return;
+    applyBtn.disabled = true;
+    applyBtn.textContent = 'Mengunduh...';
+    result.hidden = false;
+    result.textContent = 'Mengunduh database baru (±61 MB) dan memverifikasi SHA-256...';
+    try {
+      const res = await fetch('/api/update/db/apply', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        result.innerHTML = `✓ Database diperbarui ke <strong>${formatDbVersion(data.db_version)}</strong> — ${data.total_songs.toLocaleString('id-ID')} lagu dimuat ulang.`;
+        applyBtn.classList.add('hidden');
+        showToast('Database berhasil diperbarui');
+        await checkStatus();
+        loadSongs();
+      } else {
+        result.textContent = '✕ ' + (data.error || data.title || 'Gagal memperbarui database.');
+      }
+    } catch {
+      result.textContent = '✕ Koneksi ke engine gagal saat mengunduh.';
+    } finally {
+      applyBtn.disabled = false;
+      applyBtn.textContent = 'Unduh & Terapkan';
+    }
+  }
+
+  function setupUpdateCenter() {
+    const appAuto = document.getElementById('settings-app-auto');
+    const dbAuto = document.getElementById('settings-db-auto');
+    const protect = document.getElementById('settings-protect');
+    const appRecheck = document.getElementById('app-recheck-btn');
+    const dbRecheck = document.getElementById('db-recheck-btn');
+    const dbApply = document.getElementById('db-apply-btn');
+    if (appAuto) appAuto.addEventListener('change', () => saveUpdateFlag('app_auto_check', appAuto.checked));
+    if (dbAuto) dbAuto.addEventListener('change', () => saveUpdateFlag('db_auto_check', dbAuto.checked));
+    if (protect) protect.addEventListener('change', () => saveUpdateFlag('protect_user_edits', protect.checked));
+    if (appRecheck) appRecheck.addEventListener('click', recheckAppUpdate);
+    if (dbRecheck) dbRecheck.addEventListener('click', recheckDbUpdate);
+    if (dbApply) dbApply.addEventListener('click', applyDbUpdate);
   }
 
   // Modal focus management: focus trap, return focus to trigger, and inert background
@@ -863,6 +1032,7 @@
     }
 
     updateSettingsStatusText();
+    loadUpdateSettings();
 
     if (settingsThemeSelect && state.activeTheme) {
       for (let i = 0; i < settingsThemeSelect.options.length; i++) {
@@ -1032,6 +1202,7 @@
 
     // Settings Modal
     if (settingsBtn) settingsBtn.addEventListener('click', showSettings);
+    setupUpdateCenter();
     if (settingsCloseBtn) settingsCloseBtn.addEventListener('click', cancelSettings);
     if (settingsCancelBtn) settingsCancelBtn.addEventListener('click', cancelSettings);
     if (settingsSaveBtn) settingsSaveBtn.addEventListener('click', saveSettings);

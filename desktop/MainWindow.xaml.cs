@@ -83,6 +83,9 @@ public partial class MainWindow : Window
         WebView.Source = new Uri($"http://127.0.0.1:{port}/");
         WebView.NavigationCompleted += (s, args) =>
             Dispatcher.Invoke(() => LoadingOverlay.Visibility = Visibility.Collapsed);
+
+        // Database channel: one quiet availability check after the engine is up.
+        _ = Task.Run(() => CheckForDbUpdateAsync(port));
     }
 
     // ---------- Tray icon & close-to-tray ----------
@@ -155,6 +158,10 @@ public partial class MainWindow : Window
     {
         try
         {
+            // Respect the operator's Settings toggle; the engine and the shell read
+            // the same %LOCALAPPDATA%\\Banklycs\\config.json.
+            if (!ReadConfigFlag("app_auto_check", defaultValue: true)) return;
+
             using var req = new HttpRequestMessage(HttpMethod.Get,
                 "https://api.github.com/repos/zzdevxx/banklycs-v2/releases/latest");
             req.Headers.UserAgent.ParseAdd("Banklycs-App");
@@ -196,6 +203,55 @@ public partial class MainWindow : Window
         catch
         {
             // Offline or API hiccup: the check must never disturb the operator.
+        }
+    }
+
+    private static bool ReadConfigFlag(string key, bool defaultValue)
+    {
+        try
+        {
+            string path = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Banklycs", "config.json");
+            if (!File.Exists(path)) return defaultValue;
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+            return doc.RootElement.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.True;
+        }
+        catch
+        {
+            return defaultValue;
+        }
+    }
+
+    // Database update channel: the engine reports availability via its manifest
+    // check; the shell only turns that into a tray notification.
+    private async Task CheckForDbUpdateAsync(int port)
+    {
+        try
+        {
+            if (!ReadConfigFlag("db_auto_check", defaultValue: true)) return;
+
+            using var req = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{port}/api/update/db");
+            using var res = await Http.SendAsync(req);
+            if (!res.IsSuccessStatusCode) return;
+
+            using var stream = await res.Content.ReadAsStreamAsync();
+            using var doc = await JsonDocument.ParseAsync(stream);
+            if (!doc.RootElement.GetProperty("update_available").GetBoolean()) return;
+
+            string? latest = doc.RootElement.TryGetProperty("latest_version", out var v)
+                ? v.GetString() : null;
+
+            Dispatcher.Invoke(() =>
+            {
+                _trayIcon?.ShowBalloonTip(8000, "Database Banklycs baru tersedia",
+                    $"Katalog versi {latest} sudah rilis. Buka Settings > Pembaruan Database untuk mengunduh.",
+                    WF.ToolTipIcon.Info);
+            });
+        }
+        catch
+        {
+            // Offline: silent, same policy as the app update check.
         }
     }
 
