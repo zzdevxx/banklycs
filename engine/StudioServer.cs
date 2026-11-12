@@ -59,6 +59,10 @@ namespace Banklycs
         // Opsional: peta nama lagu -> "praise"/"worship" untuk memilih slide
         // template per lagu. Tanpa ini semua lagu pakai template aktif (praise).
         public Dictionary<string, string>? styles { get; set; }
+        // Opsional: peta nama lagu -> teks lirik inline (format bank: BLANK +
+        // header grup). Menang atas isi database; dipakai untuk varian terpotong
+        // (struktur sesi ibadah) dan lagu yang belum ada di katalog.
+        public Dictionary<string, string>? contents { get; set; }
     }
 
     public static class StudioServer
@@ -1556,7 +1560,17 @@ namespace Banklycs
                                     string songTitle = cleanName;
                                     string songContent = "";
 
-                                    if (dbConn != null)
+                                    // Konten inline dari payload menang atas bank: dipakai
+                                    // untuk varian terpotong dan lagu di luar katalog.
+                                    if (data.contents != null)
+                                    {
+                                        if (data.contents.TryGetValue(cleanName, out string? inline) && !string.IsNullOrWhiteSpace(inline))
+                                            songContent = inline;
+                                        else if (data.contents.TryGetValue(safeBaseName, out string? inlineSafe) && !string.IsNullOrWhiteSpace(inlineSafe))
+                                            songContent = inlineSafe;
+                                    }
+
+                                    if (string.IsNullOrEmpty(songContent) && dbConn != null)
                                     {
                                         using var cmd = dbConn.CreateCommand();
                                         // The exact catalog filename wins; the sanitized form is
