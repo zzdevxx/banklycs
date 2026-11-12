@@ -982,6 +982,30 @@ internal class Program
 		{
 			parsedGroup?.Slides.Add(new List<string>(list2));
 		}
+
+		// Projection rule: a slide carries at most two lyric lines. Sections
+		// written without blank-line breaks (most of the catalog) arrive as one
+		// tall slide; split them into consecutive two-line slides so the
+		// congregation is never shown a wall of text.
+		foreach (ParsedGroup groupToSplit in list)
+		{
+			if (groupToSplit.Slides.All(s => s.Count <= 2)) continue;
+			var splitSlides = new List<List<string>>();
+			foreach (List<string> slide in groupToSplit.Slides)
+			{
+				if (slide.Count <= 2)
+				{
+					splitSlides.Add(slide);
+					continue;
+				}
+				for (int i = 0; i < slide.Count; i += 2)
+				{
+					splitSlides.Add(slide.Skip(i).Take(2).ToList());
+				}
+			}
+			groupToSplit.Slides = splitSlides;
+		}
+
 		return list;
 	}
 
