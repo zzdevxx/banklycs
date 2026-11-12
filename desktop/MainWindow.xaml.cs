@@ -163,7 +163,7 @@ public partial class MainWindow : Window
             if (!ReadConfigFlag("app_auto_check", defaultValue: true)) return;
 
             using var req = new HttpRequestMessage(HttpMethod.Get,
-                "https://api.github.com/repos/zzdevxx/banklycs-v2/releases/latest");
+                "https://api.github.com/repos/zzdevxx/banklycs/releases/latest");
             req.Headers.UserAgent.ParseAdd("Banklycs-App");
             using var res = await Http.SendAsync(req);
             if (!res.IsSuccessStatusCode) return;
@@ -193,7 +193,7 @@ public partial class MainWindow : Window
                     try
                     {
                         Process.Start(new ProcessStartInfo(
-                            "https://github.com/zzdevxx/banklycs-v2/releases/latest")
+                            "https://github.com/zzdevxx/banklycs/releases/latest")
                         { UseShellExecute = true });
                     }
                     catch { /* ignore */ }

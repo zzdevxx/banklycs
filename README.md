@@ -2,7 +2,7 @@
 
 **Standalone desktop app** untuk ProPresenter 7: 24.520 lagu rohani siap tayang, satu klik inject. Ini generasi kedua Banklycs — window native, tray icon, installer sungguhan (arsitektur setara ProPresenter 7: .NET + WPF + WebView2 + SQLite + Protobuf).
 
-> 📍 **Banklycs v1** (START.vbs + Edge app-mode) tetap tersedia di repo [banklycs-v1](https://github.com/zzdevxx/banklycs-v1).
+> 📍 **Single repository sejak v2.2** — semua versi diarsipkan di [Releases](https://github.com/zzdevxx/banklycs/releases): v1.0 (legacy START.vbs + Edge), v2.0, v2.1, dst. Development berlanjut di sini (v2.2, v2.3, ...).
 
 ---
 
@@ -61,7 +61,7 @@ Dua jalur pembaruan terpisah, keduanya bisa dimatikan/dinyalakan di **Settings**
 
 | Jalur | Versi | Sumber | Mekanisme |
 |---|---|---|---|
-| **Aplikasi** | `v2.0`, `v2.1`, ... (+0.1) | GitHub Releases `banklycs-v2` | Notifikasi tray + tombol *Periksa Sekarang* di Settings |
+| **Aplikasi** | `v2.0`, `v2.1`, ... (+0.1) | GitHub Releases `banklycs` | Notifikasi tray + tombol *Periksa Sekarang* di Settings |
 | **Database** | timestamp UTC (mis. `2026-11-11T23:22:51Z`) | `database/db_manifest.json` di repo master | Unduh + verifikasi SHA-256 + swap atomik + reload katalog, tanpa restart |
 
 - **Database murni dari maintainer** — tidak dapat diedit dari aplikasi. Perbaikan/custom lagu dilakukan langsung di ProPresenter 7.
