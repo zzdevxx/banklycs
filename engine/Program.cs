@@ -787,13 +787,20 @@ internal class Program
 		return color;
 	}
 
-	private static string GetRtfString(List<string> lines, string genre)
+	private static string GetRtfString(List<string> lines, string genre, Template.Types.Slide? typoSlide = null)
 	{
 		// Prefer typography recovered from the native template slide (exact ProPresenter match).
 		// Fall back to genre-based defaults if template was not loaded.
+		// typoSlide = slide template yang dipilih untuk lagu ini (praise/worship),
+		// bukan template aktif global — lagu worship harus dapat tipografi worship.
 		string font = s_tplFont;
 		double pt = s_tplFontPt;
 		bool isBold = s_tplBold;
+		if (typoSlide != null)
+		{
+			(var tf, double tpt, bool tb) = ParseTemplateRtfTypo(typoSlide);
+			font = tf; pt = tpt; isBold = tb;
+		}
 
 		if (s_baseSlideTemplate == null)
 		{
@@ -1015,6 +1022,7 @@ internal class Program
 	}
 
 	private static Template.Types.Slide? s_baseSlideTemplate = null;
+	private static Template.Types.Document? s_themeDocFull = null;
 	private static ApplicationInfo? s_appInfo = null;
 	private static readonly object s_themeLock = new object();
 	private static string s_tplFont = "CMGSans-Bold";
@@ -1034,6 +1042,7 @@ internal class Program
 			// Every cached value belongs to the previous template; leaving the typography
 			// behind made /api/themes report stale font data after a theme switch.
 			s_baseSlideTemplate = null;
+			s_themeDocFull = null;
 			s_appInfo = null;
 			s_tplFont = "CMGSans-Bold";
 			s_tplFontPt = 67.0;
@@ -1051,6 +1060,19 @@ internal class Program
 		slide = doc.Slides.FirstOrDefault(s => s.Name == "Lyric - Praise");
 		if (slide != null) return slide;
 		return doc.Slides.FirstOrDefault();
+	}
+
+	// Pilih slide template berdasarkan gaya lagu: "worship" pakai slide
+	// "Lyric - Worship" dari tema yang sama, selain itu pakai template aktif.
+	public static Template.Types.Slide? GetSlideForStyle(string? style)
+	{
+		if (style != null && style.Equals("worship", StringComparison.OrdinalIgnoreCase)
+			&& s_themeDocFull?.Slides != null)
+		{
+			var w = s_themeDocFull.Slides.FirstOrDefault(s => s.Name.Equals("Lyric - Worship", StringComparison.OrdinalIgnoreCase));
+			if (w != null) return w;
+		}
+		return s_baseSlideTemplate;
 	}
 
 	// Cache the resolved slide's RTF typography recovered from its native template.
@@ -1161,6 +1183,7 @@ internal class Program
 						appInfo = doc.ApplicationInfo;
 						usedFile = tf;
 						usedData = data;
+						s_themeDocFull = doc;
 						break;
 					}
 				}
@@ -1179,6 +1202,7 @@ internal class Program
 							appInfo = doc.ApplicationInfo;
 							usedFile = tf;
 							usedData = data;
+							s_themeDocFull = doc;
 							break;
 						}
 					}
@@ -1210,7 +1234,7 @@ internal class Program
 		}
 	}
 
-	public static bool CompileAndSaveSong(string songName, string lyricContent, string targetFile, string? rootPath = null, string? proPresenterDir = null)
+	public static bool CompileAndSaveSong(string songName, string lyricContent, string targetFile, string? rootPath = null, string? proPresenterDir = null, string? style = null)
 	{
 		if (!EnsureThemeLoaded(rootPath, proPresenterDir) || s_baseSlideTemplate == null)
 		{
@@ -1224,11 +1248,12 @@ internal class Program
 			Directory.CreateDirectory(dir);
 		}
 
+		var chosenSlide = GetSlideForStyle(style) ?? s_baseSlideTemplate;
 		string genre = "Praise";
-		if (ActiveSlideTemplateName.Contains("Worship", StringComparison.OrdinalIgnoreCase)) genre = "Worship";
-		else if (ActiveSlideTemplateName.Contains("Bible", StringComparison.OrdinalIgnoreCase)) genre = "Bible";
+		if (chosenSlide.Name.Contains("Worship", StringComparison.OrdinalIgnoreCase)) genre = "Worship";
+		else if (chosenSlide.Name.Contains("Bible", StringComparison.OrdinalIgnoreCase)) genre = "Bible";
 
-		return BuildPresentation(s_baseSlideTemplate, songName, parsedGroups, genre, targetFile, s_appInfo);
+		return BuildPresentation(chosenSlide, songName, parsedGroups, genre, targetFile, s_appInfo);
 	}
 
 	public static void ExportTxt(string rootPath, string targetDir)
@@ -1407,7 +1432,7 @@ internal class Program
 				{
 					String = Guid.NewGuid().ToString()
 				};
-				string rtfString = GetRtfString(slide, genre);
+				string rtfString = GetRtfString(slide, genre, baseSlideTemplate);
 				element_.Text.RtfData = ByteString.CopyFrom(Encoding.UTF8.GetBytes(rtfString));
 				cue.Actions.Add(action);
 				presentation.Cues.Add(cue);

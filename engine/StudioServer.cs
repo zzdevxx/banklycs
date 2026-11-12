@@ -47,10 +47,29 @@ namespace Banklycs
         public string name { get; set; } = "Ibadah Hari Minggu";
         public List<string> songs { get; set; } = new List<string>();
         public string workspace { get; set; } = "";
+        // Opsional: peta nama lagu -> "praise"/"worship" untuk memilih slide
+        // template per lagu. Tanpa ini semua lagu pakai template aktif (praise).
+        public Dictionary<string, string>? styles { get; set; }
     }
 
     public static class StudioServer
     {
+        private static string ResolveStyle(Dictionary<string, string>? styles, string cleanName)
+        {
+            if (styles == null || styles.Count == 0) return "praise";
+            foreach (var kv in styles)
+            {
+                string k = kv.Key.Trim();
+                if (k.Equals(cleanName, StringComparison.OrdinalIgnoreCase)
+                    || k.Equals(cleanName + ".txt", StringComparison.OrdinalIgnoreCase)
+                    || k.Equals(cleanName + ".pro", StringComparison.OrdinalIgnoreCase))
+                {
+                    return kv.Value?.Trim().ToLowerInvariant() ?? "praise";
+                }
+            }
+            return "praise";
+        }
+
         private static List<SongCatalogItem> Catalog = new List<SongCatalogItem>();
         private static DateTime CatalogLoadedAt = DateTime.MinValue;
         private static int CatalogVersion = 0;
@@ -1542,7 +1561,7 @@ namespace Banklycs
 
                                     if (!string.IsNullOrEmpty(songContent))
                                     {
-                                        compiled = Program.CompileAndSaveSong(songTitle, songContent, dstFile, ProjectRoot, ProPresenterDir);
+                                        compiled = Program.CompileAndSaveSong(songTitle, songContent, dstFile, ProjectRoot, ProPresenterDir, ResolveStyle(data.styles, cleanName));
                                     }
                                     else
                                     {
@@ -1554,7 +1573,7 @@ namespace Banklycs
                                             if (IsUnder(txtFile, dbDirFull) && File.Exists(txtFile))
                                             {
                                                 songContent = File.ReadAllText(txtFile, Encoding.UTF8);
-                                                compiled = Program.CompileAndSaveSong(songTitle, songContent, dstFile, ProjectRoot, ProPresenterDir);
+                                                compiled = Program.CompileAndSaveSong(songTitle, songContent, dstFile, ProjectRoot, ProPresenterDir, ResolveStyle(data.styles, cleanName));
                                             }
                                             else
                                             {
