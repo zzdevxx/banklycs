@@ -96,10 +96,6 @@ namespace Banklycs
         private static bool DbAutoCheck = true;
         private static bool ProtectUserEdits = true;
 
-        private static readonly Regex HeaderRegex = new Regex(
-            @"^(BLANK|INTRO|VERSE(\s+\d+)?|PRE[\s\-]*CHORUS(\s+\d+)?|CHORUS(\s+\d+)?|BRIDGE(\s+\d+)?|TAG|INTERLUDE|ENDING|OUTRO)$",
-            RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
         // A plain StartsWith() prefix check accepts a sibling directory whose name
         // merely begins with the root ("...\app" vs "...\app2"). Compare against the
         // root with a trailing separator instead.
@@ -350,7 +346,7 @@ namespace Banklycs
                             Console.WriteLine($"[THEME] Backup tema lama: {backup}");
                         }
                         File.Copy(srcTemplate, banklycsThemeFile, overwrite: true);
-                        File.WriteAllText(versionMarker, ThemeVersion);
+                        Program.WriteAllTextAtomic(versionMarker, ThemeVersion);
                         Console.WriteLine($"[THEME] Auto-injected official Banklycs Theme v{ThemeVersion} to ProPresenter: {banklycsThemeFile}");
                     }
                 }
@@ -420,7 +416,7 @@ namespace Banklycs
             {
                 Directory.CreateDirectory(ConfigDir);
                 var obj = new { app_auto_check = AppAutoCheck, db_auto_check = DbAutoCheck, protect_user_edits = ProtectUserEdits };
-                File.WriteAllText(ConfigPath, JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true }));
+                Program.WriteAllTextAtomic(ConfigPath, JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true }));
             }
             catch (Exception ex)
             {
@@ -448,7 +444,7 @@ namespace Banklycs
             try
             {
                 Directory.CreateDirectory(ConfigDir);
-                File.WriteAllText(InjectStatePath, JsonSerializer.Serialize(InjectState));
+                Program.WriteAllTextAtomic(InjectStatePath, JsonSerializer.Serialize(InjectState));
             }
             catch (Exception ex)
             {
@@ -509,9 +505,11 @@ namespace Banklycs
                 string? tag = doc.RootElement.GetProperty("tag_name").GetString();
                 if (string.IsNullOrWhiteSpace(tag)) return ("", false, "Tag rilis tidak terbaca");
                 string digits = tag.TrimStart('v', 'V');
-                if (!double.TryParse(digits, CultureInfo.InvariantCulture, out double latest))
+                // Version, bukan double: "2.10" sebagai double = 2.1 sehingga
+                // update ke v2.10 tidak akan terdeteksi setelah v2.9.
+                if (!System.Version.TryParse(digits, out System.Version? latest))
                     return ("", false, $"Tag tidak dikenali: {tag}");
-                if (!double.TryParse(AppVersion, CultureInfo.InvariantCulture, out double current)) current = 0;
+                if (!System.Version.TryParse(AppVersion, out System.Version? current)) current = new System.Version(0, 0);
                 return (tag, latest > current, "");
             }
             catch (Exception ex)
@@ -705,7 +703,14 @@ namespace Banklycs
 
             if (!isLocalOrigin)
             {
-                SendProblem(req, res, 403, "Forbidden", "Cross-origin requests from external origins are blocked.");
+                try
+                {
+                    SendProblem(req, res, 403, "Forbidden", "Cross-origin requests from external origins are blocked.");
+                }
+                catch (Exception resEx)
+                {
+                    Console.WriteLine($"[WARN] Gagal mengirim 403: {resEx.Message}");
+                }
                 return;
             }
 
@@ -1061,74 +1066,18 @@ namespace Banklycs
                             return;
                         }
 
-                        string[] lines = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-
-                        List<LyricsGroup> groups = new List<LyricsGroup>();
-                        LyricsGroup curGroup = new LyricsGroup { header = "HEADER" };
-                        List<string> curSlide = new List<string>();
-
-                        foreach (string rawLine in lines)
-                        {
-                            string line = rawLine.Trim();
-                            if (string.IsNullOrEmpty(line))
+                        // Single source of truth: pakai parser yang sama dengan
+                        // compile-time (ParseLyricContent) supaya grouping — termasuk
+                        // BAIT/REFF lagu Jawa — dan aturan 2 baris per slide selalu
+                        // identik dengan .pro yang di-inject. Header di-uppercase
+                        // karena web console menstyling berdasarkan "BLANK" exact.
+                        List<LyricsGroup> groups = Program.ParseLyricContent(content)
+                            .Select(g => new LyricsGroup
                             {
-                                if (curSlide.Count > 0)
-                                {
-                                    curGroup.slides.Add(new List<string>(curSlide));
-                                    curSlide.Clear();
-                                }
-                                continue;
-                            }
-
-                            if (HeaderRegex.IsMatch(line))
-                            {
-                                if (curSlide.Count > 0)
-                                {
-                                    curGroup.slides.Add(new List<string>(curSlide));
-                                    curSlide.Clear();
-                                }
-                                if (curGroup.slides.Count > 0)
-                                {
-                                    groups.Add(curGroup);
-                                }
-                                curGroup = new LyricsGroup { header = line.ToUpperInvariant() };
-                            }
-                            else
-                            {
-                                curSlide.Add(line);
-                            }
-                        }
-
-                        if (curSlide.Count > 0)
-                        {
-                            curGroup.slides.Add(new List<string>(curSlide));
-                        }
-                        if (curGroup.slides.Count > 0)
-                        {
-                            groups.Add(curGroup);
-                        }
-
-                        // Projection rule: max two lines per slide — mirror the
-                        // compile-time split in ParseLyricContent so the preview
-                        // matches what gets injected into ProPresenter.
-                        foreach (LyricsGroup grp in groups)
-                        {
-                            if (grp.slides.All(s => s.Count <= 2)) continue;
-                            var splitSlides = new List<List<string>>();
-                            foreach (List<string> slide in grp.slides)
-                            {
-                                if (slide.Count <= 2)
-                                {
-                                    splitSlides.Add(slide);
-                                    continue;
-                                }
-                                for (int i = 0; i < slide.Count; i += 2)
-                                {
-                                    splitSlides.Add(slide.Skip(i).Take(2).ToList());
-                                }
-                            }
-                            grp.slides = splitSlides;
-                        }
+                                header = g.Name.ToUpperInvariant(),
+                                slides = g.Slides
+                            })
+                            .ToList();
 
                         var lyricsData = new LyricsResponse
                         {
@@ -1229,13 +1178,17 @@ namespace Banklycs
 
                             // Atomic swap: keep a one-step-back backup, replace the DB,
                             // then mirror the remote manifest locally as the new version record.
-                            string backup = DatabasePath + ".bak";
-                            if (File.Exists(DatabasePath)) File.Copy(DatabasePath, backup, overwrite: true);
-                            File.Move(tempDb, DatabasePath, overwrite: true);
-                            File.WriteAllText(DbManifestLocalPath,
-                                JsonSerializer.Serialize(remoteManifest, new JsonSerializerOptions { WriteIndented = true }));
+                            // InjectLock menutup race dengan inject yang sedang membaca DB.
+                            lock (InjectLock)
+                            {
+                                string backup = DatabasePath + ".bak";
+                                if (File.Exists(DatabasePath)) File.Copy(DatabasePath, backup, overwrite: true);
+                                File.Move(tempDb, DatabasePath, overwrite: true);
+                                Program.WriteAllTextAtomic(DbManifestLocalPath,
+                                    JsonSerializer.Serialize(remoteManifest, new JsonSerializerOptions { WriteIndented = true }));
 
-                            LoadCatalog();
+                                LoadCatalog();
+                            }
 
                             SendJson(req, res, new
                             {
@@ -1664,7 +1617,15 @@ namespace Banklycs
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERROR] Handler error: {ex.Message}");
-                SendProblem(req, res, 500, "Internal Server Error", "Terjadi kesalahan internal pada server.");
+                try
+                {
+                    SendProblem(req, res, 500, "Internal Server Error", "Terjadi kesalahan internal pada server.");
+                }
+                catch (Exception resEx)
+                {
+                    // Client sudah putus koneksi; tidak ada lagi yang bisa dilaporkan.
+                    Console.WriteLine($"[WARN] Gagal mengirim 500: {resEx.Message}");
+                }
             }
         }
 

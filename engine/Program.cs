@@ -51,6 +51,13 @@ internal class Program
 		}
 	}
 
+	// Teks punya jalur atomic yang sama dengan bytes: config, manifest, dan
+	// state jangan pernah terpotong di tengah tulisan bila proses mati mendadak.
+	internal static void WriteAllTextAtomic(string targetPath, string contents)
+	{
+		WriteAllBytesAtomic(targetPath, Encoding.UTF8.GetBytes(contents));
+	}
+
 	public static void CreatePlaylistDirect(string playlistDocPath, string playlistName, List<string> songFileNames, string proBanksDir)
 	{
 		CreatePlaylist(playlistDocPath, playlistName, songFileNames, proBanksDir);
@@ -140,7 +147,7 @@ internal class Program
 		}
 
 		Console.WriteLine("==============================================================================");
-		Console.WriteLine("PROPRESENTER 7 MASTER ENGINE (THEME ZZ - MASTER BANKS UNIFIED)");
+		Console.WriteLine("BANKLYCS MASTER ENGINE - PROPRESENTER 7 BATCH COMPILER");
 		Console.WriteLine("==============================================================================");
 		Console.WriteLine($"[INFO] Workspace Path : {path}");
 
@@ -174,53 +181,19 @@ internal class Program
 			}
 		}
 
-		// 3. Resolve Theme Template
-		string themePath = null;
-		if (proPresenterDir != null)
-		{
-			string t = Path.Combine(proPresenterDir, "Themes\\zz\\Theme");
-			if (File.Exists(t)) themePath = t;
-			else
-			{
-				t = Path.Combine(proPresenterDir, "Themes\\xx\\Theme");
-				if (File.Exists(t)) themePath = t;
-			}
-		}
-
-		if (themePath == null || !File.Exists(themePath))
-		{
-			string localTheme = Path.Combine(path, "Engine\\ThemeTemplate");
-			if (File.Exists(localTheme)) themePath = localTheme;
-			else
-			{
-				localTheme = Path.Combine(AppContext.BaseDirectory, "ThemeTemplate");
-				if (File.Exists(localTheme)) themePath = localTheme;
-			}
-		}
-
-		if (themePath == null || !File.Exists(themePath))
+		// 3. Resolve Theme Template — satu sumber kebenaran dengan jalur server
+		// (Banklycs group diprioritaskan, sama seperti inject via API).
+		if (!EnsureThemeLoaded(path, proPresenterDir) || s_baseSlideTemplate == null || s_themeDocFull == null)
 		{
 			Console.WriteLine("[ERROR] File Tema tidak ditemukan di ProPresenter maupun Engine local fallback!");
 			Environment.ExitCode = 1;
 			return;
 		}
-
-		byte[] data = File.ReadAllBytes(themePath);
-		Template.Types.Document themeDoc = Template.Types.Document.Parser.ParseFrom(data);
-		Template.Types.Slide slidePraise = themeDoc.Slides.FirstOrDefault((Template.Types.Slide s) => s.Name == "Lyric - Praise");
-		if (slidePraise == null)
-		{
-			slidePraise = themeDoc.Slides.FirstOrDefault();
-		}
-		if (slidePraise == null)
-		{
-			Console.WriteLine("[ERROR] Tidak ada slide template yang ditemukan di Tema!");
-			Environment.ExitCode = 1;
-			return;
-		}
-		Console.WriteLine("[OK] Tema berhasil dimuat (" + themePath + "):");
+		Template.Types.Slide slidePraise = s_baseSlideTemplate;
+		Template.Types.Document themeDoc = s_themeDocFull;
+		Console.WriteLine("[OK] Tema berhasil dimuat (" + s_tplFile + "):");
 		Console.WriteLine($"     - Total slide dalam tema : {themeDoc.Slides.Count}");
-		Console.WriteLine("     - Default Template Slide : " + slidePraise.Name + " (CMGSans-Bold, fs134, Canvas 1920x1080)");
+		Console.WriteLine("     - Default Template Slide : " + slidePraise.Name + " (Canvas 1920x1080)");
 
 		// 4. Clean & Register Libraries
 		string libBanks = null;
@@ -560,32 +533,16 @@ internal class Program
 				return;
 			}
 
-			// Resolve ProPresenter Dir
-			string personal = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
-			string candidate = Path.Combine(personal, "ProPresenter");
-			string proPresenterDir = null;
-			if (Directory.Exists(candidate)) proPresenterDir = candidate;
-			else
-			{
-				string oneDrive = Environment.GetEnvironmentVariable("OneDrive");
-				if (!string.IsNullOrEmpty(oneDrive))
-				{
-					candidate = Path.Combine(oneDrive, "Documents", "ProPresenter");
-					if (Directory.Exists(candidate)) proPresenterDir = candidate;
-					else
-					{
-						candidate = Path.Combine(oneDrive, "Dokumen", "ProPresenter");
-						if (Directory.Exists(candidate)) proPresenterDir = candidate;
-					}
-				}
-			}
+			// Resolve ProPresenter Dir — satu sumber dengan server (termasuk
+			// fallback USERPROFILE\Documents yang tidak ada di salinan inline lama).
+			string proPresenterDir = Banklycs.StudioServer.ResolveProPresenterDir();
 
-		if (proPresenterDir == null)
-		{
-			Console.WriteLine("[ERROR] Folder ProPresenter tidak ditemukan di sistem!");
-			Environment.ExitCode = 1;
-			return;
-		}
+			if (string.IsNullOrEmpty(proPresenterDir))
+			{
+				Console.WriteLine("[ERROR] Folder ProPresenter tidak ditemukan di sistem!");
+				Environment.ExitCode = 1;
+				return;
+			}
 
 			string workspace;
 			if (!string.IsNullOrWhiteSpace(req.Workspace) && Directory.Exists(req.Workspace))
@@ -873,7 +830,7 @@ internal class Program
 	{
 		try
 		{
-			File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest), Encoding.UTF8);
+			WriteAllTextAtomic(manifestPath, JsonSerializer.Serialize(manifest));
 		}
 		catch (Exception ex)
 		{
@@ -982,6 +939,14 @@ internal class Program
 			}
 			else
 			{
+				// Baris lirik sebelum header pertama tidak boleh dibuang diam-diam:
+				// lampirkan ke group implisit pertama (cara /api/lyrics lama juga
+				// menyimpannya, jadi preview dan compile kini sama-sama tidak lossy).
+				if (parsedGroup == null)
+				{
+					parsedGroup = new ParsedGroup { Name = "Verse", RawHeader = "VERSE" };
+					list.Add(parsedGroup);
+				}
 				list2.Add(text);
 			}
 		}
@@ -1218,9 +1183,10 @@ internal class Program
 				s_appInfo = appInfo;
 
 				// Recover font/size/bold from native template slide and cache it
-				s_tplFont = ParseTemplateRtfTypo(slide).font;
-				s_tplFontPt = ParseTemplateRtfTypo(slide).pt;
-				s_tplBold = ParseTemplateRtfTypo(slide).bold;
+				(var tplFont, double tplPt, bool tplBold) = ParseTemplateRtfTypo(slide);
+				s_tplFont = tplFont;
+				s_tplFontPt = tplPt;
+				s_tplBold = tplBold;
 				s_tplFile = usedFile;
 
 				Console.WriteLine($"[THEME] Loaded slide '{slide.Name}' from {usedFile} | font={s_tplFont} pt={s_tplFontPt} bold={s_tplBold}");
@@ -1273,14 +1239,14 @@ internal class Program
 		Console.WriteLine($"[EXPORT] Mengekspor lirik dari {dbPath} ke {targetDir}...");
 		Stopwatch sw = Stopwatch.StartNew();
 
-		string connStr = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+		string connStr = new SqliteConnectionStringBuilder
 		{
 			DataSource = dbPath,
-			Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly
+			Mode = SqliteOpenMode.ReadOnly
 		}.ToString();
 
 		int count = 0;
-		using (var conn = new Microsoft.Data.Sqlite.SqliteConnection(connStr))
+		using (var conn = new SqliteConnection(connStr))
 		{
 			conn.Open();
 			using var cmd = conn.CreateCommand();
