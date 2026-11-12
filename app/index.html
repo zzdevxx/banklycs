@@ -257,6 +257,55 @@
             <button id="install-font-btn" class="settings-pill-btn hidden" type="button" title="Install font CMG Sans ke Windows">Install Font</button>
           </div>
         </div>
+
+        <div class="settings-control-card">
+          <div class="settings-row-label">
+            <span class="settings-label-title">Pembaruan Aplikasi</span>
+            <span id="settings-app-version" class="settings-val-badge">v—</span>
+          </div>
+          <div class="settings-update-row">
+            <label class="settings-toggle-wrap">
+              <input type="checkbox" id="settings-app-auto" class="settings-toggle-input">
+              <span class="settings-toggle-ui" aria-hidden="true"></span>
+              <span class="settings-toggle-text">Periksa otomatis saat aplikasi dibuka</span>
+            </label>
+            <button id="app-recheck-btn" class="settings-pill-btn" type="button" title="Periksa rilis terbaru di GitHub">Periksa Sekarang</button>
+          </div>
+          <div id="app-update-result" class="settings-path-box hidden"></div>
+          <a id="app-update-link" class="settings-pill-btn settings-pill-btn-accent hidden" href="https://github.com/zzdevxx/banklycs-v2/releases/latest" target="_blank" rel="noopener noreferrer">Buka Halaman Unduhan</a>
+        </div>
+
+        <div class="settings-control-card">
+          <div class="settings-row-label">
+            <span class="settings-label-title">Pembaruan Database</span>
+            <span id="settings-db-version" class="settings-val-badge">—</span>
+          </div>
+          <div class="settings-update-row">
+            <label class="settings-toggle-wrap">
+              <input type="checkbox" id="settings-db-auto" class="settings-toggle-input">
+              <span class="settings-toggle-ui" aria-hidden="true"></span>
+              <span class="settings-toggle-text">Periksa otomatis saat aplikasi dibuka</span>
+            </label>
+            <button id="db-recheck-btn" class="settings-pill-btn" type="button" title="Periksa katalog lagu terbaru">Periksa Sekarang</button>
+          </div>
+          <div id="db-update-result" class="settings-path-box hidden"></div>
+          <button id="db-apply-btn" class="settings-pill-btn settings-pill-btn-accent hidden" type="button" title="Unduh database baru, verifikasi SHA-256, lalu ganti otomatis">Unduh &amp; Terapkan</button>
+        </div>
+
+        <div class="settings-control-card">
+          <div class="settings-row-label">
+            <span class="settings-label-title">Proteksi Editan ProPresenter</span>
+          </div>
+          <label class="settings-toggle-wrap">
+            <input type="checkbox" id="settings-protect" class="settings-toggle-input">
+            <span class="settings-toggle-ui" aria-hidden="true"></span>
+            <span class="settings-toggle-text">Jangan timpa lagu yang sudah diedit di ProPresenter</span>
+          </label>
+          <div class="settings-path-box">
+            <span class="spec-label">Catatan:</span>
+            <span class="spec-path">Database master murni dari kurasi maintainer dan tidak bisa diedit dari aplikasi. Untuk memperbaiki atau custom lagu, sunting langsung di ProPresenter 7 — Banklycs tidak akan menimpanya saat inject ulang.</span>
+          </div>
+        </div>
       </div>
 
       <div class="modal-window-footer">
@@ -285,7 +334,7 @@
               <span class="about-handle">@zzdevxx</span>
               <span class="about-badge-verified">Creator & Maintainer</span>
             </div>
-            <p class="about-role">Lead Architect of Banklycs & Tri-Harness Workspace Ecosystem</p>
+            <p class="about-role">Creator, Lead Architect & Maintainer of Banklycs</p>
           </div>
         </div>
 
@@ -309,9 +358,9 @@
         </div>
 
         <div class="about-links-grid">
-          <a href="https://github.com/zzdevxx/banklycs" target="_blank" rel="noopener" class="about-link-card">
+          <a href="https://github.com/zzdevxx/banklycs-v2" target="_blank" rel="noopener" class="about-link-card">
             <span class="about-link-title">GitHub Repository</span>
-            <span class="about-link-subtitle">github.com/zzdevxx/banklycs</span>
+            <span class="about-link-subtitle">github.com/zzdevxx/banklycs-v2</span>
             <span class="about-link-arrow" aria-hidden="true">↗</span>
           </a>
           <a href="https://zzdevxx.github.io/banklycs-download/" target="_blank" rel="noopener" class="about-link-card">

@@ -1,5 +1,5 @@
 # ==============================================================================
-# Banklycs - .gitignore
+# Banklycs v2 - .gitignore
 # ==============================================================================
 
 # OS & Environment
@@ -8,52 +8,21 @@ Desktop.ini
 .DS_Store
 *.tmp
 
-# .NET / C# Build Artifacts
-[Bb]in/
-[Oo]bj/
-[Pp]ublish/
-publish/
-*.user
-*.suo
-*.pdb
-.vs/
-.idea/
-*.vscode/
+# Build & installer artifacts
+desktop/bin/
+desktop/obj/
+desktop/dist/
+engine/bin/
+engine/obj/
 
-# SQLite Temporary Cache & WAL
-*.db-wal
-*.db-shm
-*.db-journal
-
-# Database Single-File Tracking
-!database/banklycs.db
-
-# Loose File Dumps (if user runs export-txt)
-database/txt/
-database/pro/
-/PRO
-/TXT
-
-# Python Cache & Scraper Temps
-__pycache__/
-*.py[cod]
-*$py.class
-.pytest_cache/
-*.log
-
-# Engine Output & Logs
-engine/last_errors.txt
+# Runtime state
 engine/last_port.txt
-engine/_run.log
-engine/test_export/
 
 # Archives & Large Backups
 *.zip
 *.tar.gz
 *.7z
 
-
-# Build & installer artifacts
-desktop/dist/
-desktop/bin/
-desktop/obj/
+# Secrets & local config
+*.age
+.env

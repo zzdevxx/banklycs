@@ -1,122 +1,69 @@
-# 🎶 Banklycs — ProPresenter 7 Worship Lyrics Engine & Database
+# 🎶 Banklycs v2 — Native Studio Console (WPF + WebView2)
 
-[![Catalog](https://img.shields.io/badge/Catalog-24%2C520%20Songs-blue?style=flat-square&logo=musicbrainz)](https://github.com/zzdevxx/banklycs)
-[![Database](https://img.shields.io/badge/Database-SQLite%20(61MB)-success?style=flat-square&logo=sqlite)](https://github.com/zzdevxx/banklycs)
-[![Target](https://img.shields.io/badge/Target-ProPresenter%207-orange?style=flat-square)](https://renewedvision.com/propresenter/)
-[![Live Portal](https://img.shields.io/badge/Live%20Portal-GitHub%20Pages-brightgreen?style=flat-square&logo=githubpages)](https://zzdevxx.github.io/banklycs-download/)
-[![Engine](https://img.shields.io/badge/Engine-C%23%20.NET%208%20Native-purple?style=flat-square&logo=dotnet)](https://github.com/zzdevxx/banklycs)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+**Standalone desktop app** untuk ProPresenter 7: 24.520 lagu rohani siap tayang, satu klik inject. Ini generasi kedua Banklycs — window native, tray icon, installer sungguhan (arsitektur setara ProPresenter 7: .NET + WPF + WebView2 + SQLite + Protobuf).
 
-> 📍 **Repo ini = Banklycs v1 (START.vbs + Edge app-mode).** Pengembangan v2 (app native WPF + installer) pindah ke repo terpisah: **banklycs-v2**.
->
-> **Koleksi 24.520 Lagu Rohani & Himne Siap Tayang untuk ProPresenter 7.**  
-> Dirancang khusus untuk tim multimedia gereja, operator proyektor, dan worship leader agar **tidak perlu lagi mencari & *copy-paste* lirik dari browser saat ibadah.**  
-> 🌐 **Live Portal & Web Simulator:** [https://zzdevxx.github.io/banklycs-download/](https://zzdevxx.github.io/banklycs-download/)
+> 📍 **Banklycs v1** (START.vbs + Edge app-mode) tetap tersedia di repo [banklycs-v1](https://github.com/zzdevxx/banklycs-v1).
 
 ---
 
-## ⚡ Fitur Utama
+## 🏗️ Arsitektur
 
-- **24.520 Lagu Terkurasi & Siap Tayang (100% Zero-Duplicate)**:
-  - **Praise & Worship Indonesia (14.586 lagu)**: GMS Live, JPCC Worship, Symphony Worship, NDC Worship, Bethel, Sari Simorangkir, Franky Sihombing, dll.
-  - **English Contemporary & Classic Hymns (5.956 lagu)**: Hillsong Worship, Elevation Worship, Bethel Music, Planetshakers, Chris Tomlin, Matt Redman, Songs of Fellowship, Martin Luther, John Newton, dll.
-  - **Buku Nyanyian & Himne Gereja Lengkap**:
-    - **KJ** (Kidung Jemaat) — 1.096 lagu
-    - **BE** (Buku Ende HKBP Batak) — 844 lagu
-    - **KK** (Kidung Keesaan) — 765 lagu
-    - **KLIK** (Kumpulan Lagu Ibadah Kreatif) — 461 lagu
-    - **PKJ** (Pelengkap Kidung Jemaat) — 399 lagu
-    - **NKB** (Nyanyikanlah Kidung Baru) — 363 lagu
-    - **NNBT** (Nyanyian Baru Bagi Tuhan) — 46 lagu
-    - **Kidung Pasamuwan Jawi** — 1 lagu
-- **Arsitektur Single-File Database (`database/banklycs.db`)**:
-  - Semua 24.520 lagu tersimpan dalam **1 file SQLite tunggal (~61 MB)**.
-  - Tidak ada lagi puluhan ribu file kecil yang memperlambat Windows NTFS atau proses transfer flashdisk USB.
-  - Katalog lengkap dimuat ke RAM saat start (~0,3 detik) lalu difilter dengan pencocokan substring per token — tidak ada round-trip SQLite per ketikan. Tabel `songs_fts` (FTS5) tetap ada dan dipakai oleh `tools/audit_cleanliness.py`, bukan oleh server.
-- **Kompilasi On-Demand (<1 ms per lagu)**:
-  - File biner ProPresenter (`.pro`) dikompilasi secara *in-memory* hanya saat operator mengklik **INJECT**.
-  - ProPresenter tetap bersih, ringan, dan **bebas lag/crash** (hanya menyimpan lagu-lagu ibadah aktif di disk).
-- **Studio Console GUI (Anti-Lag & Anti-Crash)**:
-  - Antarmuka *dark mode* berkecepatan tinggi tanpa dependensi Python di laptop gereja.
-  - Tinjauan lirik langsung (*live slide inspector*) dengan teks yang jelas dan terbaca.
-  - Penyusun rundown ibadah dengan fitur **1-Klik Inject ke ProPresenter**.
-- **Standar Panggung Profesional**:
-  - Maksimal **2 baris teks per slide** (mudah dibaca jemaat dan pemusik).
-  - Menggunakan tema panggung teruji: Font `CMGSans-Bold`, ukuran font proporsional (fs134), Canvas 1920x1080.
-  - Slide pertama otomatis berupa slide **`BLANK`** berlabel judul lagu.
-  - Header bagian terstandarisasi (`VERSE`, `CHORUS`, `PRE-CHORUS`, `BRIDGE`, dll.).
-
----
-
-## 🚀 Panduan Memulai Cepat (Quick Start)
-
-### Syarat Sistem
-- **Windows 10 / 11 (64-bit)**
-- **ProPresenter 7**
-- **Nol Instalasi Tambahan**: Tidak memerlukan instalasi Python di laptop ibadah. Seluruh komputer yang menjalankan ProPresenter 7 sudah memiliki runtime .NET bawaan.
-
-### Cara Menjalankan Aplikasi
-Cukup **double-click** file:
 ```
-START.vbs   (1-Klik Senyap untuk Operator — 100% tanpa jendela terminal CMD)
+Banklycs.App.exe  (satu proses, self-contained, zero-dependency)
+├── WPF Window (title bar native, tray icon, close-to-tray, single-instance)
+├── WebView2 → UI Studio Console (HTML/CSS/JS — identik dengan v1, 100% reuse)
+└── Engine C# in-process (StudioServer: HTTP localhost, kompilasi .pro protobuf)
 ```
 
-1. Aplikasi **Studio Console** akan langsung terbuka di browser/Edge App.
-2. Ketik judul lagu / artis / nomor buku (misal `KJ 392`, `BE 210`, atau `Kuasa Darah`).
-3. Klik tombol `+ TAMBAH KE RUNDOWN` untuk menyusun lagu ibadah minggu ini.
-4. Klik tombol **`INJECT KE PROPRESENTER`**.
-5. Buka ProPresenter 7 — Playlist ibadah langsung tersedia dan ProPresenter terbuka dalam **1 detik tanpa lag maupun crash!**
+- **`desktop/`** — shell WPF + WebView2 (`Banklycs.App`), ikon, script installer Inno Setup
+- **`engine/`** — engine C# (.NET 8): HTTP server, katalog SQLite in-memory, kompilasi `.pro` on-demand, auto-inject tema ProPresenter
+- **`app/`** — UI Studio Console (dark mode ProPresenter 7 style)
+- **`database/banklycs.db`** — master SQLite 24.520 lagu (61 MB, single-file)
+- **`tools/fonts/`** — font panggung CMG Sans
 
----
+## 🚀 Build dari Source
 
-## 📂 Struktur Repositori
-
-```text
-banklycs/
-├── START.vbs              <- Launcher 1-klik untuk operator gereja (senyap, 0 CMD)
-├── database/
-│   └── banklycs.db        <- Master SQLite DB seluruh 24.520 lagu (~61 MB)
-├── app/                   <- Antarmuka Web GUI Studio Console (HTML, CSS, JS)
-│   ├── index.html
-│   ├── style.css
-│   └── app.js
-├── engine/                <- Engine C# .NET 8 (Server, Protobuf Serializer, & On-Demand Injector)
-│   ├── banklycs.exe       <- Binary native mandiri (single-file, embedded SQLite)
-│   ├── Program.cs         <- Serializer Google Protobuf & in-memory builder
-│   ├── StudioServer.cs    <- High-performance async server & SQLite catalog (<2ms search)
-│   ├── ProEngine.csproj   <- Konfigurasi project .NET 8
-│   └── ThemeTemplate      <- Template slide resmi CMGSans-Bold 1920x1080
-├── markdowns/             <- Dokumentasi arsitektur, doktrin lirik, & panduan teknis
-│   ├── RULES.md           <- Standarisasi format lirik panggung
-│   ├── GENERATE.md        <- Arsitektur kompilasi on-demand & injeksi ProPresenter
-│   ├── GUIDE.md           <- Panduan pengguna & kontribusi gereja
-│   └── AGENT.md           <- Manual operasional AI coding agent
-├── tools/                 <- Skrip scraper & audit (khusus developer/maintainer)
-│   ├── audit_cleanliness.py
-│   └── migrate_txt_to_sqlite.py
-├── LICENSE                <- Lisensi resmi MIT (@zzdevxx)
-└── README.md              <- Panduan pemakaian ini
-```
-
----
-
-## 🛠️ Perintah untuk Developer / Maintainer
-
-Mengekspor seluruh 24.520 lagu kembali menjadi file teks biasa (`.txt`):
 ```powershell
-engine\banklycs.exe export-txt [folder_tujuan]
-# Contoh: engine\banklycs.exe export-txt database\txt
+# Prasyarat: .NET 8 SDK (Windows)
+cd desktop
+dotnet publish Banklycs.App.csproj -c Release -r win-x64 --self-contained true `
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+  -p:EnableCompressionInSingleFile=true -o dist/app
 ```
 
-Mengaudit integritas database kapan saja:
+## 📦 Installer
+
 ```powershell
-python tools\audit_cleanliness.py
+# Prasyarat: Inno Setup 6 (ISCC.exe)
+# Payload distaging ke desktop/dist/staging/ (exe + database + app + engine/ThemeTemplate + tools/fonts)
+cd desktop\installer
+ISCC.exe banklycs.iss
+# Hasil: desktop/dist/Banklycs-Setup-<versi>.exe
 ```
 
----
+Installer **per-user tanpa UAC** (`%LOCALAPPDATA%\Programs\Banklycs`), shortcut Desktop + Start Menu, uninstaller resmi.
 
-## 📜 Lisensi & Disclaimer
+## ✨ Fitur Shell v2
 
-- Source code, engine compiler, dan tooling dilisensikan di bawah **[MIT License](LICENSE)** © 2026 **Andreas Restuawanta Christwara ([@zzdevxx](https://github.com/zzdevxx))**.
-- Hak cipta teks lirik dan himne sepenuhnya dimiliki oleh pencipta, label musik, penerbit, atau yayasan buku nyanyian gereja terkait (YAMUGER, BPK Gunung Mulia, Sinode HKBP, CCLI, dll.).
-- Repositori ini diperuntukkan sebagai alat bantu pelayanan ibadah nirlaba (*non-commercial ecclesiastical worship presentation tool*).
+- Window native (bukan browser) dengan ikon BL custom, DPI-aware
+- Tray icon + close-to-tray (klik X = minim ke tray; keluar hanya via tray menu)
+- Single-instance: klik exe lagi = buka window yang sudah jalan
+- Auto-update check ke GitHub Releases (balon notifikasi → halaman unduhan)
+- Context menu & DevTools dimatikan; link eksternal buka di browser sistem
+
+## 📜 Lisensi
+
+MIT © 2026 Andreas Restuawanta Christwara ([@zzdevxx](https://github.com/zzdevxx)).
+
+## Sistem Pembaruan (v2.1+)
+
+Dua jalur pembaruan terpisah, keduanya bisa dimatikan/dinyalakan di **Settings**:
+
+| Jalur | Versi | Sumber | Mekanisme |
+|---|---|---|---|
+| **Aplikasi** | `v2.0`, `v2.1`, ... (+0.1) | GitHub Releases `banklycs-v2` | Notifikasi tray + tombol *Periksa Sekarang* di Settings |
+| **Database** | timestamp UTC (mis. `2026-11-11T23:22:51Z`) | `database/db_manifest.json` di repo master | Unduh + verifikasi SHA-256 + swap atomik + reload katalog, tanpa restart |
+
+- **Database murni dari maintainer** — tidak dapat diedit dari aplikasi. Perbaikan/custom lagu dilakukan langsung di ProPresenter 7.
+- **Proteksi Editan ProPresenter** (default ON): file `.pro` yang sudah disunting operator di ProPresenter tidak akan ditimpa saat inject ulang; lagu yang dilewati tetap masuk playlist dan dilaporkan di dialog inject.
+- Alur update database untuk maintainer: perbarui `banklycs.db` → perbarui `db_manifest.json` → commit + attach DB ke release dengan nama **`database_<YYYY-MM-DD_HH-MM-SS>.db`** (stamp UTC, identik dengan field `version`) → klien mendeteksi otomatis. Field `version` tetap ISO UTC agar kompatibel dengan parser engine.
