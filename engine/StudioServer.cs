@@ -84,7 +84,7 @@ namespace Banklycs
         private static string? ProPresenterDir = null;
 
         // ----- Settings + dual update channels (app v2.x / database timestamp) -----
-        private const string AppVersion = "2.5";
+        private const string AppVersion = "2.6";
         private const string AppReleaseApiUrl = "https://api.github.com/repos/zzdevxx/banklycs/releases/latest";
         private const string DbManifestRemoteUrl = "https://raw.githubusercontent.com/zzdevxx/banklycs/master/database/db_manifest.json";
         private static readonly HttpClient UpdateHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };

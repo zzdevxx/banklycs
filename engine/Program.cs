@@ -58,6 +58,41 @@ internal class Program
 		WriteAllBytesAtomic(targetPath, Encoding.UTF8.GetBytes(contents));
 	}
 
+	// Namespace tetap milik Banklycs untuk UUIDv5 dokumen lagu.
+	private static readonly Guid UuidNamespace = new Guid("a3f5c8d2-7b1e-4f6a-9c2d-5e8b1a4f7c03");
+
+	// UUIDv5 (RFC 4122): SHA-1 dari namespace + nama lagu. Lagu yang sama
+	// selalu menghasilkan UUID yang sama di mesin mana pun, sehingga playlist
+	// ProPresenter tetap valid walau library di-recompile dari nol.
+	public static string DeterministicSongUuid(string stableName)
+	{
+		byte[] ns = UuidNamespace.ToByteArray();
+		SwapGuidEndian(ns); // Guid little-endian -> RFC 4122 big-endian
+		byte[] nameBytes = Encoding.UTF8.GetBytes(stableName.Trim().ToLowerInvariant());
+		byte[] full = new byte[ns.Length + nameBytes.Length];
+		ns.CopyTo(full, 0);
+		nameBytes.CopyTo(full, ns.Length);
+		using (var sha = System.Security.Cryptography.SHA1.Create())
+		{
+			byte[] hash = sha.ComputeHash(full);
+			Array.Resize(ref hash, 16); // UUIDv5 = 16 byte pertama dari SHA-1
+			hash[6] = (byte)((hash[6] & 0x0F) | 0x50); // version 5
+			hash[8] = (byte)((hash[8] & 0x3F) | 0x80); // variant 10xx
+			SwapGuidEndian(hash); // kembali ke layout little-endian Guid
+			return new Guid(hash).ToString();
+		}
+	}
+
+	// Menukar 3 field little-endian Guid ke urutan RFC 4122 dan sebaliknya.
+	private static void SwapGuidEndian(byte[] b)
+	{
+		byte t;
+		t = b[0]; b[0] = b[3]; b[3] = t;
+		t = b[1]; b[1] = b[2]; b[2] = t;
+		t = b[4]; b[4] = b[5]; b[5] = t;
+		t = b[6]; b[6] = b[7]; b[7] = t;
+	}
+
 	public static void CreatePlaylistDirect(string playlistDocPath, string playlistName, List<string> songFileNames, string proBanksDir)
 	{
 		CreatePlaylist(playlistDocPath, playlistName, songFileNames, proBanksDir);
@@ -1321,12 +1356,38 @@ internal class Program
 
 	private static bool BuildPresentation(Template.Types.Slide baseSlideTemplate, string songName, List<ParsedGroup> parsedGroups, string genre, string targetFile, ApplicationInfo appInfo)
 	{
+		// Document UUID resolution order:
+		// 1. Reuse the UUID already inside the existing .pro (recompile keeps
+		//    ProPresenter playlist references intact — the Mujizat class of
+		//    breakage disappears, and user-side playlist edits survive).
+		// 2. Fall back to a deterministic UUIDv5 derived from the file name,
+		//    so the same song always compiles to the same identity even after
+		//    the library file was deleted or moved between machines.
+		// Random Guid.NewGuid() is never used for documents anymore.
+		string docUuid = null;
+		try
+		{
+			if (File.Exists(targetFile))
+			{
+				Presentation existing = Presentation.Parser.ParseFrom(File.ReadAllBytes(targetFile));
+				docUuid = existing?.Uuid?.String;
+			}
+		}
+		catch (Exception uuidEx)
+		{
+			Console.WriteLine($"[WARN] UUID lama tidak terbaca ({Path.GetFileName(targetFile)}): {uuidEx.Message}");
+		}
+		if (string.IsNullOrEmpty(docUuid))
+		{
+			docUuid = DeterministicSongUuid(Path.GetFileNameWithoutExtension(targetFile));
+		}
+
 		Presentation presentation = new Presentation
 		{
 			Name = songName,
 			Uuid = new UUID
 			{
-				String = Guid.NewGuid().ToString()
+				String = docUuid
 			},
 			LastModifiedDate = new Timestamp
 			{
