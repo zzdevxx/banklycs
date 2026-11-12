@@ -1089,6 +1089,28 @@ namespace Banklycs
                             groups.Add(curGroup);
                         }
 
+                        // Projection rule: max two lines per slide — mirror the
+                        // compile-time split in ParseLyricContent so the preview
+                        // matches what gets injected into ProPresenter.
+                        foreach (LyricsGroup grp in groups)
+                        {
+                            if (grp.slides.All(s => s.Count <= 2)) continue;
+                            var splitSlides = new List<List<string>>();
+                            foreach (List<string> slide in grp.slides)
+                            {
+                                if (slide.Count <= 2)
+                                {
+                                    splitSlides.Add(slide);
+                                    continue;
+                                }
+                                for (int i = 0; i < slide.Count; i += 2)
+                                {
+                                    splitSlides.Add(slide.Skip(i).Take(2).ToList());
+                                }
+                            }
+                            grp.slides = splitSlides;
+                        }
+
                         var lyricsData = new LyricsResponse
                         {
                             filename = filename,

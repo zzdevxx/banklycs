@@ -26,3 +26,5 @@ engine/last_port.txt
 # Secrets & local config
 *.age
 .env
+database/banklycs.db-shm
+database/banklycs.db-wal
