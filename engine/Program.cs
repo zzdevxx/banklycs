@@ -98,6 +98,29 @@ internal class Program
 		CreatePlaylist(playlistDocPath, playlistName, songFileNames, proBanksDir);
 	}
 
+	// Hapus playlist berdasar nama dari dokumen playlist ProPresenter.
+	// Mengembalikan true bila playlist ditemukan dan dihapus.
+	public static bool DeletePlaylist(string playlistDocPath, string playlistName)
+	{
+		if (!File.Exists(playlistDocPath)) return false;
+		PlaylistDocument doc;
+		try
+		{
+			doc = PlaylistDocument.Parser.ParseFrom(File.ReadAllBytes(playlistDocPath));
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"[WARN] Playlist tidak valid: {ex.Message}");
+			return false;
+		}
+		if (doc?.RootNode?.Playlists?.Playlists == null) return false;
+		Playlist existing = doc.RootNode.Playlists.Playlists.FirstOrDefault(p => p.Name.Equals(playlistName, StringComparison.OrdinalIgnoreCase));
+		if (existing == null) return false;
+		doc.RootNode.Playlists.Playlists.Remove(existing);
+		WriteAllBytesAtomic(playlistDocPath, doc.ToByteArray());
+		return true;
+	}
+
 	private static string ResolveWorkspaceRoot(string[] args)
 	{
 		if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]) && Directory.Exists(args[0]) && !args[0].StartsWith("-"))

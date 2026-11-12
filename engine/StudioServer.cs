@@ -42,6 +42,11 @@ namespace Banklycs
         public string raw { get; set; } = "";
     }
 
+    public class PlaylistDeleteRequest
+    {
+        public string? name { get; set; }
+    }
+
     public class InjectRequest
     {
         // Null/kosong = mode compile-only: lagu dikompilasi ke library tanpa
@@ -1360,6 +1365,57 @@ namespace Banklycs
                         }
 
                         SendJson(req, res, new { success = true, active_theme = Program.ActiveSlideTemplateName });
+                        return;
+                    }
+
+                    if (rawPath.Equals("/api/playlist/delete", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!string.Equals(req.Headers["X-Banklycs-Inject"], "1", StringComparison.Ordinal))
+                        {
+                            SendProblem(req, res, 428, "Precondition Required", "Header X-Banklycs-Inject: 1 wajib disertakan.");
+                            return;
+                        }
+
+                        string? delBody = ReadBodyWithLimit(req, 10_000);
+                        if (delBody == null)
+                        {
+                            SendProblem(req, res, 413, "Payload Too Large", "Ukuran payload melebihi batas.");
+                            return;
+                        }
+
+                        PlaylistDeleteRequest? delReq = null;
+                        try
+                        {
+                            delReq = JsonSerializer.Deserialize<PlaylistDeleteRequest>(delBody,
+                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        }
+                        catch (Exception delEx)
+                        {
+                            Console.WriteLine($"[WARN] Gagal deserialize request hapus playlist: {delEx.Message}");
+                        }
+
+                        if (delReq == null || string.IsNullOrWhiteSpace(delReq.name))
+                        {
+                            SendProblem(req, res, 400, "Bad Request", "Field 'name' wajib diisi.");
+                            return;
+                        }
+
+                        if (string.IsNullOrEmpty(ProPresenterDir) || !Directory.Exists(ProPresenterDir))
+                        {
+                            SendProblem(req, res, 500, "ProPresenter Not Found", "Folder ProPresenter tidak ditemukan.");
+                            return;
+                        }
+
+                        string playlistDocPath = Path.Combine(ProPresenterDir, "Playlists", "Library");
+                        bool deleted = Program.DeletePlaylist(playlistDocPath, delReq.name.Trim());
+                        SendJson(req, res, new
+                        {
+                            success = deleted,
+                            playlist = delReq.name.Trim(),
+                            message = deleted
+                                ? $"Playlist '{delReq.name.Trim()}' dihapus."
+                                : $"Playlist '{delReq.name.Trim()}' tidak ditemukan."
+                        }, deleted ? 200 : 404);
                         return;
                     }
 
