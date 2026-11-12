@@ -18,7 +18,7 @@ Banklycs.App.exe  (satu proses, self-contained, zero-dependency)
 - **`desktop/`** — shell WPF + WebView2 (`Banklycs.App`), ikon, script installer Inno Setup
 - **`engine/`** — engine C# (.NET 8): HTTP server, katalog SQLite in-memory, kompilasi `.pro` on-demand, auto-inject tema ProPresenter
 - **`app/`** — UI Studio Console (dark mode ProPresenter 7 style)
-- **`database/banklycs.db`** — master SQLite 24.520 lagu (61 MB, single-file)
+- **`database/banklycs.db`** — master SQLite 54.204 lagu (106 MB, single-file)
 - **`tools/fonts/`** — font panggung CMG Sans
 
 ## 🚀 Build dari Source

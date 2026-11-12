@@ -44,7 +44,11 @@ namespace Banklycs
 
     public class InjectRequest
     {
-        public string name { get; set; } = "Ibadah Hari Minggu";
+        // Null/kosong = mode compile-only: lagu dikompilasi ke library tanpa
+        // membuat/mengganti playlist (dipakai migrasi dan perbaikan massal).
+        // Sengaja tanpa default value: default string memaksa playlist baru
+        // dibuat walau pemanggil tidak mengirim "name" sama sekali.
+        public string? name { get; set; }
         public List<string> songs { get; set; } = new List<string>();
         public string workspace { get; set; } = "";
         // Opsional: peta nama lagu -> "praise"/"worship" untuk memilih slide
@@ -1581,12 +1585,17 @@ namespace Banklycs
                                 }
                             }
 
-                            if (songNamesForPlaylist.Count > 0)
+                            // Mode compile-only: tanpa "name" di payload, lagu cukup
+                            // dikompilasi ke library tanpa membuat/mengganti playlist.
+                            if (songNamesForPlaylist.Count > 0 && !string.IsNullOrWhiteSpace(data.name))
                             {
                                 Program.CreatePlaylistDirect(playlistDocPath, data.name, songNamesForPlaylist, libBanks);
                             }
 
-                            string outputMsg = $"[OK] Playlist '{data.name}': {compiledCount} dari {data.songs.Count} lagu dikompilasi";
+                            string targetLabel = string.IsNullOrWhiteSpace(data.name)
+                                ? "(compile-only, tanpa playlist)"
+                                : $"'{data.name}'";
+                            string outputMsg = $"[OK] Playlist {targetLabel}: {compiledCount} dari {data.songs.Count} lagu dikompilasi";
                             if (skippedModified.Count > 0)
                                 outputMsg += $", {skippedModified.Count} dilewati (sudah diedit di ProPresenter)";
                             if (missingFiles.Count > 0)

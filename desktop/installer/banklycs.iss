@@ -1,9 +1,9 @@
-; Banklycs v2.5.0 — Inno Setup script
+; Banklycs v2.6.0 — Inno Setup script
 ; Per-user install (no UAC), LZMA2 max compression.
 ; Compile: ISCC.exe banklycs.iss  (payload must exist in dist\staging\)
 
 #define MyAppName "Banklycs"
-#define MyAppVersion "2.5.0"
+#define MyAppVersion "2.6.0"
 #define MyAppPublisher "zzdevxx"
 #define MyAppExeName "Banklycs.App.exe"
 #define MyAppID "{{8F4A2D61-9C3E-4B7A-A1D5-2E6F80B3C942}}"
@@ -29,7 +29,7 @@ CloseApplications=yes
 RestartApplications=no
 
 [Messages]
-WelcomeLabel2=Ini akan memasang [name/ver] di komputer Anda.%n%nBanklycs adalah Studio Console untuk ProPresenter 7:%n24.520 lagu rohani siap tayang, satu klik inject.%n%nKlik Next untuk melanjutkan.
+WelcomeLabel2=Ini akan memasang [name/ver] di komputer Anda.%n%nBanklycs adalah Studio Console untuk ProPresenter 7:%n54.204 lagu rohani siap tayang, satu klik inject.%n%nKlik Next untuk melanjutkan.
 FinishedLabelNoIcons=[name] telah terpasang.%n%nBuka dari shortcut di Desktop atau Start Menu.
 
 [Files]
