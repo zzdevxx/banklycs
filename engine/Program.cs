@@ -812,7 +812,7 @@ internal class Program
 		int fs = (int)Math.Round(pt * 2); // RTF \fs is half-points
 		string boldFlag = isBold ? "" : "0";
 
-		string text = $@"{{\rtf0\ansi\ansicpg1252{{\fonttbl\f0\fnil {font};}}{{\colortbl;\red255\green255\blue255;\red255\green255\blue255;}}{{\*\expandedcolortbl;\csgenericrgb\c100000\c100000\c100000\c100000;\csgenericrgb\c100000\c100000\c100000\c0;}}{{\*\listtable{{\list\listid1\listtemplateid1\listhybrid{{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1{{\leveltext\leveltemplateid1 \'01陹 ?;}}{{\levelnumbers;}}}}{{\*\listoverridetable{{\listoverride\listid1\listoverridecount0\ls1}}}}\uc1\paperw38400\margl0\margr0\margt0\margb0";
+		string text = $@"{{\rtf0\ansi\ansicpg1252{{\fonttbl\f0\fnil {font};}}{{\colortbl;\red255\green255\blue255;\red255\green255\blue255;}}{{\*\expandedcolortbl;\csgenericrgb\c100000\c100000\c100000\c100000;\csgenericrgb\c100000\c100000\c100000\c0;}}{{\*\listtable{{\list\listid1\listtemplateid1\listhybrid{{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1{{\leveltext\leveltemplateid1 \'01\\u9679 ?;}}{{\levelnumbers;}}}}}}}}{{\*\listoverridetable{{\listoverride\listid1\listoverridecount0\ls1}}}}\uc1\paperw38400\margl0\margr0\margt0\margb0";
 		string text2 = $@"\pard\li0\fi0\ri0\qc\sb0\sa0\sl240\slmult1\slleading0\f0\b{boldFlag}\i0\ul0\strike0\fs{fs}\expnd0\expndtw0\CocoaLigature1\cf1\strokewidth0\strokec1\nosupersub\ulc0\highlight2\cb2 ";
 		List<string> list = new List<string>();
 		foreach (string line in lines)
