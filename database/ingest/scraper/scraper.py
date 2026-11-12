@@ -142,7 +142,7 @@ def cmd_parse(args):
 # -------------------------------------------------------------------- dedupe
 def cmd_dedupe(args):
     here = os.path.dirname(os.path.abspath(__file__))
-    sys.path.insert(0, here)
+    sys.path.insert(0, os.path.dirname(here))  # dedupe_songs.py ada di parent (ingest/)
     import dedupe_songs
     sys.argv = ['dedupe_songs.py'] + (['--dry'] if args.dry else [])
     dedupe_songs.main()

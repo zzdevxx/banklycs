@@ -20,7 +20,7 @@ import unicodedata
 import urllib.request
 import concurrent.futures as cf
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'database', 'banklycs.db')
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'banklycs.db')
 TMP = os.environ.get('TEMP', r'C:\Users\andre\AppData\Local\Temp')
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) BanklycsCatalog/1.0'
 

@@ -28,3 +28,8 @@ engine/last_port.txt
 .env
 database/banklycs.db-shm
 database/banklycs.db-wal
+
+# DB binary didistribusikan via release asset, bukan Git (>100MB)
+database/*.db
+database/*.db-wal
+database/*.db-shm
