@@ -33,3 +33,9 @@ database/banklycs.db-wal
 database/*.db
 database/*.db-wal
 database/*.db-shm
+
+# Build output, release staging, snapshots, logs, Python bytecode
+dist/
+__pycache__/
+*.pyc
+*.log
