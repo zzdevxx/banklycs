@@ -114,7 +114,7 @@ internal class Program
 			return false;
 		}
 		if (doc?.RootNode?.Playlists?.Playlists == null) return false;
-		Playlist existing = doc.RootNode.Playlists.Playlists.FirstOrDefault(p => p.Name.Equals(playlistName, StringComparison.OrdinalIgnoreCase));
+		Playlist? existing = doc.RootNode.Playlists.Playlists.FirstOrDefault(p => p.Name.Equals(playlistName, StringComparison.OrdinalIgnoreCase));
 		if (existing == null) return false;
 		doc.RootNode.Playlists.Playlists.Remove(existing);
 		WriteAllBytesAtomic(playlistDocPath, doc.ToByteArray());
@@ -140,13 +140,13 @@ internal class Program
 			return baseDir;
 		}
 
-		string parent = Directory.GetParent(baseDir)?.FullName;
+		string? parent = Directory.GetParent(baseDir)?.FullName;
 		if (parent != null && (Directory.Exists(Path.Combine(parent, "database")) || Directory.Exists(Path.Combine(parent, "TXT"))))
 		{
 			return parent;
 		}
 
-		string grandParent = Directory.GetParent(parent ?? "")?.FullName;
+		string? grandParent = Directory.GetParent(parent ?? "")?.FullName;
 		if (grandParent != null && (Directory.Exists(Path.Combine(grandParent, "database")) || Directory.Exists(Path.Combine(grandParent, "TXT"))))
 		{
 			return grandParent;
@@ -210,7 +210,7 @@ internal class Program
 		Console.WriteLine($"[INFO] Workspace Path : {path}");
 
 		// 2. Resolve ProPresenter documents path
-		string proPresenterDir = null;
+		string? proPresenterDir = null;
 		if (args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]) && Directory.Exists(args[1]))
 		{
 			proPresenterDir = Path.GetFullPath(args[1]);
@@ -225,7 +225,7 @@ internal class Program
 			}
 			else
 			{
-				string oneDrive = Environment.GetEnvironmentVariable("OneDrive");
+				string? oneDrive = Environment.GetEnvironmentVariable("OneDrive");
 				if (!string.IsNullOrEmpty(oneDrive))
 				{
 					candidate = Path.Combine(oneDrive, "Documents", "ProPresenter");
@@ -254,7 +254,7 @@ internal class Program
 		Console.WriteLine("     - Default Template Slide : " + slidePraise.Name + " (Canvas 1920x1080)");
 
 		// 4. Clean & Register Libraries
-		string libBanks = null;
+		string? libBanks = null;
 		bool fullRun = args.Any((string a) => a.Equals("--full", StringComparison.OrdinalIgnoreCase));
 		// Only an explicit --full may delete anything. A fresh clone without a manifest
 		// used to take this path and wipe the operator's Banks and playlists.
@@ -360,7 +360,7 @@ internal class Program
 				lock (manifestLock)
 				{
 					newManifest[fileNameWithoutExtension] = srcHash;
-					if (incremental && oldManifest.TryGetValue(fileNameWithoutExtension, out string value) && value == srcHash)
+					if (incremental && oldManifest.TryGetValue(fileNameWithoutExtension, out string? value) && value == srcHash)
 					{
 						if (File.Exists(text4) && (libBanks == null || File.Exists(Path.Combine(libBanks, fileNameWithoutExtension + ".pro"))))
 						{
@@ -539,7 +539,8 @@ internal class Program
 	{
 		try
 		{
-			Directory.CreateDirectory(Path.GetDirectoryName(playlistDocPath));
+			string? plDir = Path.GetDirectoryName(playlistDocPath);
+			if (!string.IsNullOrEmpty(plDir)) Directory.CreateDirectory(plDir);
 			byte[] bytes = new PlaylistDocument
 			{
 				RootNode = new Playlist
@@ -566,7 +567,7 @@ internal class Program
 	{
 		public string Name { get; set; } = "New Playlist";
 		public List<string> Songs { get; set; } = new List<string>();
-		public string Workspace { get; set; }
+		public string? Workspace { get; set; }
 	}
 
 	private static void HandleCreatePlaylistCommand(string jsonPath)
@@ -580,7 +581,7 @@ internal class Program
 		try
 		{
 			string jsonText = File.ReadAllText(jsonPath, Encoding.UTF8);
-			PlaylistRequest req = JsonSerializer.Deserialize<PlaylistRequest>(jsonText, new JsonSerializerOptions
+			PlaylistRequest? req = JsonSerializer.Deserialize<PlaylistRequest>(jsonText, new JsonSerializerOptions
 			{
 				PropertyNameCaseInsensitive = true
 			});
@@ -602,7 +603,7 @@ internal class Program
 				return;
 			}
 
-			string workspace;
+			string? workspace;
 			if (!string.IsNullOrWhiteSpace(req.Workspace) && Directory.Exists(req.Workspace))
 			{
 				workspace = req.Workspace;
@@ -611,7 +612,7 @@ internal class Program
 			{
 				// Fallback: cari folder "PRO" dari lokasi exe (naik hingga 3 level), baru hardcode lama.
 				workspace = null;
-				string probe = AppContext.BaseDirectory;
+				string? probe = AppContext.BaseDirectory;
 				for (int i = 0; i < 4 && probe != null; i++)
 				{
 					if (Directory.Exists(Path.Combine(probe, "database", "pro")))
@@ -645,7 +646,8 @@ internal class Program
 	{
 		try
 		{
-			Directory.CreateDirectory(Path.GetDirectoryName(playlistDocPath));
+			string? plDir = Path.GetDirectoryName(playlistDocPath);
+			if (!string.IsNullOrEmpty(plDir)) Directory.CreateDirectory(plDir);
 			PlaylistDocument playlistDocument;
 			if (File.Exists(playlistDocPath))
 			{
@@ -682,7 +684,7 @@ internal class Program
 			}
 
 			// Remove existing playlist with same name if any
-			Playlist existing = playlistDocument.RootNode.Playlists.Playlists.FirstOrDefault(p => p.Name.Equals(playlistName, StringComparison.OrdinalIgnoreCase));
+			Playlist? existing = playlistDocument.RootNode.Playlists.Playlists.FirstOrDefault(p => p.Name.Equals(playlistName, StringComparison.OrdinalIgnoreCase));
 			if (existing != null)
 			{
 				playlistDocument.RootNode.Playlists.Playlists.Remove(existing);
@@ -907,7 +909,7 @@ internal class Program
 	{
 		string[] array = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 		List<ParsedGroup> list = new List<ParsedGroup>();
-		ParsedGroup parsedGroup = null;
+		ParsedGroup? parsedGroup = null;
 		List<string> list2 = new List<string>();
 		string[] array2 = array;
 		for (int i = 0; i < array2.Length; i++)
@@ -1377,7 +1379,7 @@ internal class Program
 		Console.WriteLine($"[CLEAN] Selesai: {deletedSongs} file .pro dibersihkan dari Libraries/Banks, {clearedPlaylists} playlist direset dari Playlists/Library.");
 	}
 
-	private static bool BuildPresentation(Template.Types.Slide baseSlideTemplate, string songName, List<ParsedGroup> parsedGroups, string genre, string targetFile, ApplicationInfo appInfo)
+	private static bool BuildPresentation(Template.Types.Slide baseSlideTemplate, string songName, List<ParsedGroup> parsedGroups, string genre, string targetFile, ApplicationInfo? appInfo)
 	{
 		// Document UUID resolution order:
 		// 1. Reuse the UUID already inside the existing .pro (recompile keeps
@@ -1387,7 +1389,7 @@ internal class Program
 		//    so the same song always compiles to the same identity even after
 		//    the library file was deleted or moved between machines.
 		// Random Guid.NewGuid() is never used for documents anymore.
-		string docUuid = null;
+		string? docUuid = null;
 		try
 		{
 			if (File.Exists(targetFile))

@@ -318,7 +318,7 @@
         }
       }
     } catch {
-      showToast('Engine offline: jalankan START.vbs');
+      showToast('Engine offline: tutup Banklycs dari system tray lalu buka kembali.');
     }
   }
 
@@ -750,7 +750,7 @@
       if (missing.length === 0 && (res.ok || data.success)) {
         const skippedBox = skipped.length
           ? `<div class="modal-missing-box">
-              <p class="modal-missing-title"><strong>Dilewati — sudah diedit di ProPresenter (${skipped.length}):</strong></p>
+              <p class="modal-missing-title"><strong>Dilewati, sudah diedit di ProPresenter (${skipped.length}):</strong></p>
               <ul class="modal-missing-list">
                 ${skipped.map(m => `<li>${escapeHtml(m)}</li>`).join('')}
               </ul>
@@ -814,7 +814,7 @@
   // ============================================================
 
   function formatDbVersion(iso) {
-    if (!iso) return '—';
+    if (!iso) return '-';
     const d = new Date(iso);
     if (isNaN(d.getTime())) return iso;
     return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) +
@@ -910,7 +910,7 @@
         if (applyBtn) applyBtn.classList.add('hidden');
       } else if (data.update_available) {
         result.innerHTML = `✓ Katalog baru tersedia: <strong>${formatDbVersion(data.latest_version)}</strong> ` +
-          `(terpasang ${formatDbVersion(data.current_version)})${data.size ? ' — ' + formatBytes(data.size) : ''}`;
+          `(terpasang ${formatDbVersion(data.current_version)})${data.size ? ' (' + formatBytes(data.size) + ')' : ''}`;
         if (applyBtn) applyBtn.classList.remove('hidden');
       } else {
         result.textContent = `✓ Database sudah versi terbaru (${formatDbVersion(data.current_version)})`;
@@ -930,12 +930,12 @@
     applyBtn.disabled = true;
     applyBtn.textContent = 'Mengunduh...';
     result.hidden = false;
-    result.textContent = 'Mengunduh database baru (±61 MB) dan memverifikasi SHA-256...';
+    result.textContent = 'Mengunduh database baru (~106 MB) dan memverifikasi SHA-256...';
     try {
       const res = await fetch('/api/update/db/apply', { method: 'POST' });
       const data = await res.json();
       if (res.ok && data.success) {
-        result.innerHTML = `✓ Database diperbarui ke <strong>${formatDbVersion(data.db_version)}</strong> — ${data.total_songs.toLocaleString('id-ID')} lagu dimuat ulang.`;
+        result.innerHTML = `✓ Database diperbarui ke <strong>${formatDbVersion(data.db_version)}</strong> (${data.total_songs.toLocaleString('id-ID')} lagu dimuat ulang).`;
         applyBtn.classList.add('hidden');
         showToast('Database berhasil diperbarui');
         await checkStatus();

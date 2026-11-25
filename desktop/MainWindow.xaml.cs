@@ -28,6 +28,38 @@ public partial class MainWindow : Window
         SetupTrayIcon();
         _ = Task.Run(CheckForUpdateAsync);
 
+        string? root = FindWorkspaceRoot();
+        if (root is null)
+        {
+            LoadingText.Text = "Folder database/banklycs.db tidak ditemukan.";
+            return;
+        }
+
+        // Start engine immediately in parallel with WebView2 initialization and wait
+        // on an in-process readiness signal rather than polling stale last_port.txt.
+        var portTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                Banklycs.StudioServer.Start(root, 5050, openBrowser: false, onListeningPort: port =>
+                {
+                    if (port > 0)
+                        portTcs.TrySetResult(port);
+                    else
+                        portTcs.TrySetException(new InvalidOperationException("Port 5050-5055 terisi aplikasi lain."));
+                });
+                if (!portTcs.Task.IsCompleted)
+                {
+                    portTcs.TrySetException(new InvalidOperationException("Engine berhenti sebelum membuka port HTTP."));
+                }
+            }
+            catch (Exception ex)
+            {
+                portTcs.TrySetException(ex);
+            }
+        });
+
         try
         {
             // Keep WebView2 data (cache, localStorage) per-user so the app stays
@@ -58,31 +90,47 @@ public partial class MainWindow : Window
             return;
         }
 
-        string? root = FindWorkspaceRoot();
-        if (root is null)
+        int port;
+        try
         {
-            LoadingText.Text = "Folder database/banklycs.db tidak ditemukan.";
+            port = await portTcs.Task.WaitAsync(TimeSpan.FromSeconds(60));
+            if (!await WaitForHttpReadyAsync(port, TimeSpan.FromSeconds(10)))
+            {
+                LoadingText.Text = $"Engine pada port {port} tidak merespons /api/status.";
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            LoadingText.Text = $"Engine gagal start: {ex.Message}";
             return;
         }
 
-        // The engine serves the console on 127.0.0.1 and announces the real port
-        // (5050..5055) through engine/last_port.txt, exactly like START.vbs does.
-        string portFile = Path.Combine(root, "engine", "last_port.txt");
-        File.WriteAllText(portFile, "0");
-
-        _ = Task.Run(() => Banklycs.StudioServer.Start(root, 5050, openBrowser: false));
-
-        int port = await WaitForPortAsync(portFile, TimeSpan.FromSeconds(20));
-        if (port <= 0)
-        {
-            LoadingText.Text = "Engine gagal start (port 5050-5055 terisi?). Tutup aplikasi lain lalu coba lagi.";
-            return;
-        }
-
-        await WebView.EnsureCoreWebView2Async();
-        WebView.Source = new Uri($"http://127.0.0.1:{port}/");
+        int navRetries = 0;
         WebView.NavigationCompleted += (s, args) =>
-            Dispatcher.Invoke(() => LoadingOverlay.Visibility = Visibility.Collapsed);
+        {
+            if (args.IsSuccess)
+            {
+                Dispatcher.Invoke(() => LoadingOverlay.Visibility = Visibility.Collapsed);
+                return;
+            }
+            if (navRetries < 3)
+            {
+                navRetries++;
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(350);
+                    Dispatcher.Invoke(() => WebView.Source = new Uri($"http://127.0.0.1:{port}/?retry={navRetries}"));
+                });
+                return;
+            }
+            Dispatcher.Invoke(() =>
+            {
+                LoadingText.Text = $"Console gagal dimuat ({args.WebErrorStatus}). Tutup lalu buka Banklycs kembali.";
+            });
+        };
+
+        WebView.Source = new Uri($"http://127.0.0.1:{port}/");
 
         // Database channel: one quiet availability check after the engine is up.
         _ = Task.Run(() => CheckForDbUpdateAsync(port));
@@ -185,26 +233,31 @@ public partial class MainWindow : Window
             {
                 Dispatcher.Invoke(() =>
                 {
-                    _trayIcon?.ShowBalloonTip(8000, "Update Banklycs tersedia",
+                    if (_trayIcon is null) return;
+                    _trayIcon.BalloonTipClicked -= OnUpdateBalloonClicked;
+                    _trayIcon.BalloonTipClicked += OnUpdateBalloonClicked;
+                    _trayIcon.ShowBalloonTip(8000, "Update Banklycs tersedia",
                         $"Versi baru {tag} sudah rilis. Klik untuk membuka halaman unduhan.",
                         WF.ToolTipIcon.Info);
                 });
-                _trayIcon!.BalloonTipClicked += (_, _) =>
-                {
-                    try
-                    {
-                        Process.Start(new ProcessStartInfo(
-                            "https://zzdree.my.id/banklycs/#download")
-                        { UseShellExecute = true });
-                    }
-                    catch { /* ignore */ }
-                };
             }
         }
         catch
         {
             // Offline or API hiccup: the check must never disturb the operator.
         }
+    }
+
+    private static void OnUpdateBalloonClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("https://zzdree.my.id/banklycs/#download")
+            {
+                UseShellExecute = true
+            });
+        }
+        catch { /* ignore */ }
     }
 
     private static bool ReadConfigFlag(string key, bool defaultValue)
@@ -216,7 +269,12 @@ public partial class MainWindow : Window
                 "Banklycs", "config.json");
             if (!File.Exists(path)) return defaultValue;
             using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
-            return doc.RootElement.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.True;
+            if (doc.RootElement.TryGetProperty(key, out var value))
+            {
+                if (value.ValueKind == JsonValueKind.True) return true;
+                if (value.ValueKind == JsonValueKind.False) return false;
+            }
+            return defaultValue;
         }
         catch
         {
@@ -258,24 +316,20 @@ public partial class MainWindow : Window
 
     // ---------- Engine bootstrap ----------
 
-    private static async Task<int> WaitForPortAsync(string portFile, TimeSpan timeout)
+    private static async Task<bool> WaitForHttpReadyAsync(int port, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
         {
             try
             {
-                string text = File.ReadAllText(portFile).Trim();
-                if (int.TryParse(text, out int port) && port > 0)
-                {
-                    return port;
-                }
+                using var res = await Http.GetAsync($"http://127.0.0.1:{port}/api/status");
+                if (res.IsSuccessStatusCode) return true;
             }
-            catch (IOException) { /* file being rewritten */ }
-
-            await Task.Delay(200);
+            catch { /* retry briefly */ }
+            await Task.Delay(120);
         }
-        return 0;
+        return false;
     }
 
     private static string? FindWorkspaceRoot()

@@ -209,7 +209,9 @@ body.pro-app {
 .tb-center {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
+  min-width: 0;
+  max-width: 100%;
   margin: 0 auto;
   gap: 2px;
   background-color: #1c1c1c;
@@ -218,7 +220,7 @@ body.pro-app {
   border: 1px solid var(--pro-border-subtle);
   overflow-x: auto;
   scrollbar-width: none;
-  flex-shrink: 1;
+  flex: 1 1 auto;
 }
 
 .tb-center::-webkit-scrollbar {
@@ -1706,20 +1708,22 @@ body.pro-app {
 }
 
 /* Responsive fallbacks for narrow viewports */
-@media (max-width: 1024px) {
+@media (max-width: 1320px) {
   .pro-toolbar {
     flex-wrap: wrap;
     height: auto;
-    padding: 8px 12px;
+    padding: 6px 12px;
+    gap: 6px 10px;
   }
   .tb-left {
-    width: 100%;
-    max-width: 100%;
+    flex: 1 1 280px;
+    max-width: 420px;
   }
   .tb-center {
     order: 3;
+    flex: 1 0 100%;
     width: 100%;
-    margin-top: 4px;
+    justify-content: safe center;
   }
   .tb-right {
     margin-left: auto;

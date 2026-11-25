@@ -97,7 +97,7 @@ namespace Banklycs
         private static string? ProPresenterDir = null;
 
         // ----- Settings + dual update channels (app v2.x / database timestamp) -----
-        private const string AppVersion = "2.6";
+        private const string AppVersion = "2.7";
         private const string AppReleaseApiUrl = "https://api.github.com/repos/zzdevxx/banklycs/releases/latest";
         private const string DbManifestRemoteUrl = "https://raw.githubusercontent.com/zzdevxx/banklycs/master/database/db_manifest.json";
         private static readonly HttpClient UpdateHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
@@ -155,6 +155,12 @@ namespace Banklycs
         {
             try
             {
+                string? envOverride = Environment.GetEnvironmentVariable("BANKLYCS_PROPRESENTER_DIR");
+                if (!string.IsNullOrWhiteSpace(envOverride) && Directory.Exists(envOverride))
+                {
+                    return Path.GetFullPath(envOverride);
+                }
+
                 string personal = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
                 string cand = Path.Combine(personal, "ProPresenter");
                 if (Directory.Exists(cand)) return cand;
@@ -416,6 +422,15 @@ namespace Banklycs
                 if (doc.RootElement.TryGetProperty("app_auto_check", out var a)) AppAutoCheck = a.GetBoolean();
                 if (doc.RootElement.TryGetProperty("db_auto_check", out var b)) DbAutoCheck = b.GetBoolean();
                 if (doc.RootElement.TryGetProperty("protect_user_edits", out var c)) ProtectUserEdits = c.GetBoolean();
+                if (doc.RootElement.TryGetProperty("active_theme", out var t))
+                {
+                    string? chosenTheme = t.GetString();
+                    if (!string.IsNullOrWhiteSpace(chosenTheme))
+                    {
+                        Program.ActiveSlideTemplateName = chosenTheme.Trim();
+                        Program.ResetThemeCache();
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -428,7 +443,13 @@ namespace Banklycs
             try
             {
                 Directory.CreateDirectory(ConfigDir);
-                var obj = new { app_auto_check = AppAutoCheck, db_auto_check = DbAutoCheck, protect_user_edits = ProtectUserEdits };
+                var obj = new
+                {
+                    app_auto_check = AppAutoCheck,
+                    db_auto_check = DbAutoCheck,
+                    protect_user_edits = ProtectUserEdits,
+                    active_theme = Program.ActiveSlideTemplateName
+                };
                 Program.WriteAllTextAtomic(ConfigPath, JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true }));
             }
             catch (Exception ex)
@@ -531,7 +552,7 @@ namespace Banklycs
             }
         }
 
-        public static void Start(string rootPath, int preferredPort = 5050, bool openBrowser = true)
+        public static void Start(string rootPath, int preferredPort = 5050, bool openBrowser = true, Action<int>? onListeningPort = null)
         {
             ProjectRoot = rootPath;
             DatabasePath = Path.Combine(ProjectRoot, "database", "banklycs.db");
@@ -546,6 +567,15 @@ namespace Banklycs
                 ProDir = Path.Combine(ProjectRoot, "engine", "PRO");
             }
             AppDir = Path.Combine(ProjectRoot, "app");
+
+            try
+            {
+                string portFile = Path.Combine(ProjectRoot, "engine", "last_port.txt");
+                if (Directory.Exists(Path.GetDirectoryName(portFile)))
+                    File.WriteAllText(portFile, "0");
+            }
+            catch { /* non-fatal */ }
+
             ProPresenterDir = ResolveProPresenterDir();
             EnsureProPresenterBanklycsTheme();
 
@@ -588,19 +618,24 @@ namespace Banklycs
                 {
                     Console.WriteLine($"[WARN] Tidak dapat menulis last_port.txt: {ex.Message}");
                 }
+                onListeningPort?.Invoke(-1);
                 Environment.ExitCode = 1;
                 return;
             }
 
-            // Handshake for START.vbs: the port may not be 5050 when it is occupied.
+            // Handshake for scripts / legacy launchers: the port may not be 5050 when occupied.
             try
             {
-                File.WriteAllText(Path.Combine(ProjectRoot, "engine", "last_port.txt"), port.ToString());
+                string portFile = Path.Combine(ProjectRoot, "engine", "last_port.txt");
+                Directory.CreateDirectory(Path.GetDirectoryName(portFile)!);
+                File.WriteAllText(portFile, port.ToString());
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[WARN] Tidak dapat menulis last_port.txt: {ex.Message}");
             }
+
+            onListeningPort?.Invoke(port);
 
             string serverUrl = $"http://127.0.0.1:{port}";
             Console.WriteLine("==============================================================================");
@@ -1195,9 +1230,13 @@ namespace Banklycs
                             // InjectLock menutup race dengan inject yang sedang membaca DB.
                             lock (InjectLock)
                             {
+                                // Release pooled Windows file handles before overwriting banklycs.db.
+                                SqliteConnection.ClearAllPools();
                                 string backup = DatabasePath + ".bak";
                                 if (File.Exists(DatabasePath)) File.Copy(DatabasePath, backup, overwrite: true);
                                 File.Move(tempDb, DatabasePath, overwrite: true);
+                                try { File.Delete(DatabasePath + "-wal"); } catch { }
+                                try { File.Delete(DatabasePath + "-shm"); } catch { }
                                 Program.WriteAllTextAtomic(DbManifestLocalPath,
                                     JsonSerializer.Serialize(remoteManifest, new JsonSerializerOptions { WriteIndented = true }));
 
@@ -1361,6 +1400,7 @@ namespace Banklycs
                                 {
                                     Program.ActiveSlideTemplateName = chosen.Trim();
                                     Program.ResetThemeCache();
+                                    SaveAppConfig();
                                 }
                             }
                         }

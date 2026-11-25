@@ -1,4 +1,4 @@
-# Banklycs v2.6
+# Banklycs v2.7
 
 Aplikasi desktop native untuk ProPresenter 7: 54.204 lagu rohani siap tayang, satu klik inject. Window native, tray icon, installer sungguhan. Arsitekturnya setara ProPresenter 7: .NET 10 + WPF + WebView2 + SQLite + Protobuf.
 
