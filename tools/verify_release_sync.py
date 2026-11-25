@@ -28,6 +28,10 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def format_id_number(value: int) -> str:
+    return f"{value:,}".replace(",", ".")
+
+
 def main() -> int:
     errors: list[str] = []
 
@@ -87,19 +91,26 @@ def main() -> int:
 
     if PORTAL_HTML.exists():
         html = PORTAL_HTML.read_text(encoding="utf-8")
-        formatted_total = f"{total_songs:,}".replace(",", ".")
+        formatted_total = format_id_number(total_songs)
         if formatted_total not in html:
             errors.append(f"banklycs-download/index.html missing formatted song count {formatted_total}")
         if ".NET 8" in html:
             errors.append("banklycs-download/index.html still references .NET 8")
         if "banklycs.exe" in html:
             errors.append("banklycs-download/index.html still references obsolete banklycs.exe")
-        if f"{db_mib} MB" not in html:
-            errors.append(f"banklycs-download/index.html missing DB size {db_mib} MB")
+        db_size_label = f"{format_id_number(db_bytes)} byte"
+        if db_size_label not in html:
+            errors.append(f"banklycs-download/index.html missing exact DB size {db_size_label}")
+        if db_sha256 not in html:
+            errors.append("banklycs-download/index.html missing current DB SHA-256")
         if f"Banklycs-Setup-{v_csproj}.exe" not in html:
             errors.append(f"banklycs-download/index.html missing installer filename Banklycs-Setup-{v_csproj}.exe")
-        if installer_mb is not None and f"{installer_mb} MB" not in html:
-            errors.append(f"banklycs-download/index.html missing installer size {installer_mb} MB")
+        if installer_path.exists():
+            installer_size_label = f"{format_id_number(installer_path.stat().st_size)} byte"
+            if installer_size_label not in html:
+                errors.append(f"banklycs-download/index.html missing exact installer size {installer_size_label}")
+            if sha256_file(installer_path) not in html:
+                errors.append("banklycs-download/index.html missing current installer SHA-256")
         print(f"Portal Check  : inspected {PORTAL_HTML}")
 
     if errors:

@@ -1616,10 +1616,23 @@ namespace Banklycs
                                     // untuk varian terpotong dan lagu di luar katalog.
                                     if (data.contents != null)
                                     {
-                                        if (data.contents.TryGetValue(cleanName, out string? inline) && !string.IsNullOrWhiteSpace(inline))
-                                            songContent = inline;
-                                        else if (data.contents.TryGetValue(safeBaseName, out string? inlineSafe) && !string.IsNullOrWhiteSpace(inlineSafe))
-                                            songContent = inlineSafe;
+                                        // The song name is stripped of ".txt"/".pro" above, but
+                                        // callers send inline content keyed by the original catalog
+                                        // name. Accept both exact forms; never fuzzy-match titles.
+                                        string[] contentKeys =
+                                        {
+                                            cleanName, cleanName + ".txt", cleanName + ".pro",
+                                            safeBaseName, safeBaseName + ".txt", safeBaseName + ".pro"
+                                        };
+                                        foreach (string contentKey in contentKeys)
+                                        {
+                                            if (data.contents.TryGetValue(contentKey, out string? inline)
+                                                && !string.IsNullOrWhiteSpace(inline))
+                                            {
+                                                songContent = inline;
+                                                break;
+                                            }
+                                        }
                                     }
 
                                     if (string.IsNullOrEmpty(songContent) && dbConn != null)

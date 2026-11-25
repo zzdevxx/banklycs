@@ -18,6 +18,8 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 EXE_PATH = ROOT / "desktop" / "bin" / "Release" / "net10.0-windows" / "win-x64" / "banklycs.exe"
+DB_SONG = "Sentuh Hatiku - Maria Shandi.txt"
+CUSTOM_SONG = "Lagu Baru Custom - E2E.txt"
 
 
 def http_json(url: str, method: str = "GET", payload: dict | None = None, headers: dict | None = None) -> tuple[int, dict]:
@@ -41,23 +43,23 @@ def main() -> int:
         print(f"[FAIL] Engine binary not found: {EXE_PATH}")
         return 1
 
-    local_cfg_dir = Path(os.environ.get("LOCALAPPDATA", "")) / "Banklycs"
-    saved_backups: dict[Path, bytes] = {}
-    for name in ("config.json", "inject_state.json"):
-        p = local_cfg_dir / name
-        if p.is_file():
-            saved_backups[p] = p.read_bytes()
+    port_file = ROOT / "engine" / "last_port.txt"
+    saved_port_bytes = port_file.read_bytes() if port_file.is_file() else None
 
     with tempfile.TemporaryDirectory(prefix="banklycs_e2e_pro7_") as tmp_dir:
-        tmp_pro = Path(tmp_dir) / "ProPresenter"
+        tmp_root = Path(tmp_dir)
+        tmp_pro = tmp_root / "ProPresenter"
         (tmp_pro / "Libraries" / "Banks").mkdir(parents=True, exist_ok=True)
         (tmp_pro / "Playlists").mkdir(parents=True, exist_ok=True)
+        local_appdata = tmp_root / "LocalAppData"
+        local_appdata.mkdir(parents=True, exist_ok=True)
 
         env = os.environ.copy()
         env["BANKLYCS_PROPRESENTER_DIR"] = str(tmp_pro)
+        env["LOCALAPPDATA"] = str(local_appdata)
 
         proc = subprocess.Popen(
-            [str(EXE_PATH), "serve"],
+            [str(EXE_PATH), "serve", "--no-browser"],
             cwd=str(ROOT),
             env=env,
             stdout=subprocess.PIPE,
@@ -151,15 +153,15 @@ def main() -> int:
                 "POST",
                 {
                     "name": "E2E Ibadah Test",
-                    "songs": ["Sentuh Hatiku - Jason.txt", "Ku Berbahagia - KJ 392.txt", "Lagu Baru Custom - E2E.txt"],
-                    "contents": {"Lagu Baru Custom - E2E.txt": "VERSE 1\nPuji Tuhan hai jiwaku\nSelalu bersyukur\n"},
-                    "styles": {"Sentuh Hatiku - Jason.txt": "worship"},
+                    "songs": [DB_SONG, "Ku Berbahagia - KJ 392.txt", CUSTOM_SONG],
+                    "contents": {CUSTOM_SONG: "VERSE 1\nPuji Tuhan hai jiwaku\nSelalu bersyukur\n"},
+                    "styles": {DB_SONG: "worship"},
                 },
                 inj_headers,
             )
             assert c200 == 200 and inj["success"] is True and inj["compiled_to_library"] == 3, f"Inject unexpected: {inj}"
             banks_dir = tmp_pro / "Libraries" / "Banks"
-            target_pro = banks_dir / "Sentuh Hatiku - Jason.pro"
+            target_pro = banks_dir / "Sentuh Hatiku - Maria Shandi.pro"
             assert target_pro.is_file() and target_pro.stat().st_size > 200
             assert (banks_dir / "Ku Berbahagia - KJ 392.pro").is_file()
             assert (banks_dir / "Lagu Baru Custom - E2E.pro").is_file()
@@ -171,10 +173,10 @@ def main() -> int:
             c200, inj2 = http_json(
                 f"{base}/api/inject",
                 "POST",
-                {"playlist": "E2E Ibadah Test", "songs": ["Sentuh Hatiku - Jason.txt"]},
+                {"name": "E2E Ibadah Test", "songs": [DB_SONG]},
                 inj_headers,
             )
-            assert c200 == 200 and "Sentuh Hatiku - Jason.pro" in (inj2.get("skipped_modified") or [])
+            assert c200 == 200 and "Sentuh Hatiku - Maria Shandi.pro" in (inj2.get("skipped_modified") or [])
             assert target_pro.read_bytes() == edited_bytes, "User-edited .pro was overwritten!"
 
             c200, del_res = http_json(f"{base}/api/playlist/delete", "POST", {"name": "E2E Ibadah Test"}, inj_headers)
@@ -226,8 +228,9 @@ def main() -> int:
                         # Inject via UI button
                         page.click("#inject-btn")
                         page.wait_for_timeout(1200)
-                        modal_title = page.locator("#modal-title").inner_text()
-                        assert "Selesai" in modal_title or "Berhasil" in modal_title or "ProPresenter" in modal_title, modal_title
+                        modal_title = page.locator("#modal-title").inner_text().strip()
+                        success_titles = {"Injection Successful", "Selesai", "Berhasil"}
+                        assert modal_title in success_titles, f"Unexpected modal title: {modal_title}"
                         page.click("#modal-ok-btn")
                         page.wait_for_timeout(200)
 
@@ -257,12 +260,16 @@ def main() -> int:
                 proc.wait(timeout=3)
             except Exception:
                 proc.kill()
-            for p in list(saved_backups):
-                p.write_bytes(saved_backups[p])
-            for name in ("config.json", "inject_state.json"):
-                target = local_cfg_dir / name
-                if target not in saved_backups and target.is_file():
-                    target.unlink()
+                proc.wait(timeout=3)
+            if proc.stdout is not None:
+                proc.stdout.close()
+            if proc.stderr is not None:
+                proc.stderr.close()
+            if saved_port_bytes is None:
+                if port_file.is_file():
+                    port_file.unlink()
+            else:
+                port_file.write_bytes(saved_port_bytes)
 
 
 if __name__ == "__main__":
