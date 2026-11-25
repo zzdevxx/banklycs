@@ -1,28 +1,29 @@
 # Banklycs v2.6
 
-Aplikasi desktop native untuk ProPresenter 7: 54.204 lagu rohani siap tayang, satu klik inject. Window native, tray icon, installer sungguhan. Arsitekturnya setara ProPresenter 7: .NET 8 + WPF + WebView2 + SQLite + Protobuf.
+Aplikasi desktop native untuk ProPresenter 7: 54.204 lagu rohani siap tayang, satu klik inject. Window native, tray icon, installer sungguhan. Arsitekturnya setara ProPresenter 7: .NET 10 + WPF + WebView2 + SQLite + Protobuf.
 
-> Satu repository sejak v2.2. Semua versi terarsip di [Releases](https://github.com/zzdevxx/banklycs/releases): v1.0 (legacy START.vbs + Edge), v2.0, v2.1, dst. Development berlanjut di sini.
+> Portal resmi: [zzdree.my.id/banklycs](https://zzdree.my.id/banklycs/) (repo portal: [banklycs-download](https://github.com/zzdevxx/banklycs-download)). Semua versi terarsip di [Releases](https://github.com/zzdevxx/banklycs/releases): v1.0 (legacy START.vbs + Edge), v2.0, v2.1, dst.
 
 ## Arsitektur
 
 ```
 Banklycs.App.exe  (satu proses, self-contained, zero-dependency)
 ├── WPF Window (title bar native, tray icon, close-to-tray, single-instance)
-├── WebView2 → UI Studio Console (HTML/CSS/JS, identik dengan v1)
+├── WebView2 -> UI Studio Console (HTML/CSS/JS, identik dengan v1)
 └── Engine C# in-process (StudioServer: HTTP localhost, kompilasi .pro protobuf)
 ```
 
 - `desktop/`: shell WPF + WebView2 (`Banklycs.App`), ikon, script installer Inno Setup
-- `engine/`: engine C# (.NET 8): HTTP server, katalog SQLite in-memory, kompilasi `.pro` on-demand, auto-inject tema ProPresenter
+- `engine/`: engine C# (.NET 10): HTTP server, katalog SQLite in-memory, kompilasi `.pro` on-demand, auto-inject tema ProPresenter
 - `app/`: UI Studio Console (dark mode ProPresenter 7 style)
-- `database/banklycs.db`: master SQLite 54.204 lagu (106 MB, single-file)
+- `database/banklycs.db`: master SQLite 54.204 lagu (106 MiB, single-file)
 - `tools/fonts/`: font panggung CMG Sans
+- `tools/verify_release_sync.py`: skrip verifikasi integritas DB, ukuran installer, manifest, dan angka di `banklycs-download`
 
 ## Build dari Source
 
 ```powershell
-# Prasyarat: .NET 8 SDK (Windows)
+# Prasyarat: .NET 10 SDK (Windows)
 cd desktop
 dotnet publish Banklycs.App.csproj -c Release -r win-x64 --self-contained true `
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `

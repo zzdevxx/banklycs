@@ -815,6 +815,7 @@ namespace Banklycs
                             latest = latestTag,
                             update_available = appAvailable,
                             url = "https://github.com/zzdevxx/banklycs/releases/latest",
+                            portal_url = "https://zzdree.my.id/banklycs/#download",
                             error = appError
                         });
                         return;

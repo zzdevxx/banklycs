@@ -839,7 +839,7 @@
     try {
       const res = await fetch('/api/settings');
       const data = await res.json();
-      if (appVersionEl) appVersionEl.textContent = 'v' + (data.app_version || '—');
+      if (appVersionEl) appVersionEl.textContent = 'v' + (data.app_version || '-');
       if (dbVersionEl) dbVersionEl.textContent = formatDbVersion(data.db_version);
       if (appAutoEl) appAutoEl.checked = !!data.app_auto_check;
       if (dbAutoEl) dbAutoEl.checked = !!data.db_auto_check;

@@ -95,7 +95,7 @@ public partial class MainWindow : Window
         _trayIcon = new WF.NotifyIcon
         {
             Icon = System.Drawing.Icon.ExtractAssociatedIcon(Process.GetCurrentProcess().MainModule!.FileName!),
-            Text = $"Banklycs v{GetAppVersion()} — Studio Console",
+            Text = $"Banklycs v{GetAppVersion()} - Studio Console",
             Visible = true
         };
         _trayIcon.DoubleClick += (_, _) => RestoreFromTray();
@@ -173,12 +173,13 @@ public partial class MainWindow : Window
             string? tag = doc.RootElement.GetProperty("tag_name").GetString();
             if (string.IsNullOrWhiteSpace(tag)) return;
 
-            // Release tags follow the owner's scheme: v1.0, v1.1, v2.0 (+0.1 per update).
-            // Current assembly version 2.0.0 is normalized to the same 2.0 form.
+            // Release tags follow the owner's scheme: v1.0, v2.0, ..., v2.10 (+0.1 per update).
+            // Normalize build component (-1 -> 0) so System.Version compares v2.10 > v2.9 cleanly.
             string digits = tag.TrimStart('v', 'V');
-            if (!double.TryParse(digits, System.Globalization.CultureInfo.InvariantCulture, out double latest)) return;
+            if (!System.Version.TryParse(digits, out System.Version? parsedLatest)) return;
             var asmVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version!;
-            double current = asmVersion.Major + asmVersion.Minor / 10.0;
+            var latest = new System.Version(parsedLatest.Major, Math.Max(0, parsedLatest.Minor), Math.Max(0, parsedLatest.Build));
+            var current = new System.Version(asmVersion.Major, Math.Max(0, asmVersion.Minor), Math.Max(0, asmVersion.Build));
 
             if (latest > current)
             {
@@ -193,7 +194,7 @@ public partial class MainWindow : Window
                     try
                     {
                         Process.Start(new ProcessStartInfo(
-                            "https://github.com/zzdevxx/banklycs/releases/latest")
+                            "https://zzdree.my.id/banklycs/#download")
                         { UseShellExecute = true });
                     }
                     catch { /* ignore */ }

@@ -20,7 +20,7 @@ Semua teks publik di repo ini (README, release notes, teks installer `desktop/in
    - SHA-256 DB: `database/db_manifest.json`
 5. Angka performa hanya boleh ditulis setelah diukur lewat command nyata di sesi yang sama.
 6. Bahasa Indonesia lugas dan teknis, kalimat aktif, subjek jelas.
-7. Sebelum rilis baru: cek ulang angka di `banklycs-download/index.html` (repo terpisah) terhadap sumber di atas, karena angka di sana cepat basi.
+7. Sebelum rilis baru: jalankan `python tools/verify_release_sync.py` dan cek ulang angka di `banklycs-download/index.html` (repo terpisah, tayang di `https://zzdree.my.id/banklycs/`) terhadap sumber di atas, karena angka di sana cepat basi.
 
 ## Hal teknis yang sering salah
 
@@ -28,4 +28,4 @@ Semua teks publik di repo ini (README, release notes, teks installer `desktop/in
 - UUID dokumen `.pro` bersifat permanen: reuse dari file lama, fallback UUIDv5 dari nama file. Jangan kembalikan ke `Guid.NewGuid()`.
 - RTF template harus identik dengan output ProPresenter; jangan menulis RTF manual.
 - Setelah inject, cek log ProPresenter (`%LOCALAPPDATA%\RenewedVision\ProPresenter\Logs`), bukan cuma byte file.
-- Sinkronisasi cloud: `python D:/ANDREAS/agent-memory/tools/sync_cloud.py banklycs` (3 remote sekaligus).
+- Sinkronisasi cloud: `python D:/ANDREAS/PERSONAL/agent-memory/tools/sync_cloud.py banklycs` (3 remote sekaligus).
