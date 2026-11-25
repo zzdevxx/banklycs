@@ -1507,10 +1507,21 @@ namespace Banklycs
                         string libBanks = Path.GetFullPath(Path.Combine(ProPresenterDir, "Libraries", "Banks"));
                         Directory.CreateDirectory(libBanks);
 
-                        // Validate against path traversal
+                        // Validate raw input against path traversal before filename sanitization
                         foreach (string raw in data.songs)
                         {
-                            string probe = raw.Trim();
+                            string rawTrim = (raw ?? string.Empty).Trim();
+                            if (string.IsNullOrEmpty(rawTrim)
+                                || rawTrim.Contains("..", StringComparison.Ordinal)
+                                || rawTrim.Contains('/', StringComparison.Ordinal)
+                                || rawTrim.Contains('\\', StringComparison.Ordinal)
+                                || Path.IsPathRooted(rawTrim))
+                            {
+                                SendProblem(req, res, 400, "Invalid Song Name", $"Nama lagu tidak valid: {raw}");
+                                return;
+                            }
+
+                            string probe = rawTrim;
                             if (probe.EndsWith(".pro", StringComparison.OrdinalIgnoreCase))
                                 probe = probe.Substring(0, probe.Length - 4);
                             else if (probe.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))

@@ -139,7 +139,7 @@ def main() -> int:
             c400, _ = http_json(
                 f"{base}/api/inject",
                 "POST",
-                {"playlist": "T", "songs": ["..\\..\\evil.txt"]},
+                {"name": "T", "songs": ["..\\..\\evil.txt"]},
                 {"X-Banklycs-Inject": "1"},
             )
             assert c400 == 400, f"Expected 400 traversal, got {c400}"
@@ -150,14 +150,14 @@ def main() -> int:
                 f"{base}/api/inject",
                 "POST",
                 {
-                    "playlist": "E2E Ibadah Test",
+                    "name": "E2E Ibadah Test",
                     "songs": ["Sentuh Hatiku - Jason.txt", "Ku Berbahagia - KJ 392.txt", "Lagu Baru Custom - E2E.txt"],
                     "contents": {"Lagu Baru Custom - E2E.txt": "VERSE 1\nPuji Tuhan hai jiwaku\nSelalu bersyukur\n"},
                     "styles": {"Sentuh Hatiku - Jason.txt": "worship"},
                 },
                 inj_headers,
             )
-            assert c200 == 200 and inj["success"] is True and inj["compiled_count"] == 3, f"Inject unexpected: {inj}"
+            assert c200 == 200 and inj["success"] is True and inj["compiled_to_library"] == 3, f"Inject unexpected: {inj}"
             banks_dir = tmp_pro / "Libraries" / "Banks"
             target_pro = banks_dir / "Sentuh Hatiku - Jason.pro"
             assert target_pro.is_file() and target_pro.stat().st_size > 200
@@ -182,7 +182,9 @@ def main() -> int:
             c404, _ = http_json(f"{base}/api/playlist/delete", "POST", {"name": "E2E Ibadah Test"}, inj_headers)
             assert c404 == 404
 
-            c200, cln = http_json(f"{base}/api/banks/clean", "POST", {}, inj_headers)
+            clean_headers = dict(inj_headers)
+            clean_headers["X-Banklycs-Confirm"] = "clean-banks"
+            c200, cln = http_json(f"{base}/api/banks/clean", "POST", {}, clean_headers)
             assert c200 == 200 and len(list(banks_dir.glob("*.pro"))) == 0
             print("[OK] Protobuf inject, Protect User Edits, Playlist Delete, and Clean Banks verified")
 
