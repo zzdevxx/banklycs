@@ -604,7 +604,7 @@ namespace Banklycs
 
             string serverUrl = $"http://127.0.0.1:{port}";
             Console.WriteLine("==============================================================================");
-            Console.WriteLine("  BANKLYCS NATIVE STUDIO CONSOLE (C# .NET 8 / ZERO-DEPENDENCY)");
+            Console.WriteLine("  BANKLYCS NATIVE STUDIO CONSOLE (C# .NET 10 / ZERO-DEPENDENCY)");
             Console.WriteLine($"  URL              : {serverUrl}");
             Console.WriteLine($"  ProPresenter Dir : {(string.IsNullOrEmpty(ProPresenterDir) ? "[TIDAK TERDETEKSI]" : ProPresenterDir)}");
             Console.WriteLine($"  Database Vault   : {(File.Exists(DatabasePath) ? DatabasePath : DatabaseDir)} ({Catalog.Count:N0} lagu)");
