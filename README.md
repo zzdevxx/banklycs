@@ -42,6 +42,10 @@ ISCC.exe banklycs.iss
 
 Installer per-user tanpa UAC (`%LOCALAPPDATA%\Programs\Banklycs`), shortcut Desktop + Start Menu, uninstaller resmi.
 
+## Uji Lokal
+
+Set `BANKLYCS_APPDATA_DIR` ke path absolut untuk memisahkan konfigurasi dan data WebView2 dari `%LOCALAPPDATA%\Banklycs`. Tanpa override, aplikasi tetap memakai folder data lokal pengguna. Helper pengujian membuat folder sementara dan memverifikasi `config_dir` dari `/api/status` sebelum menjalankan permintaan yang mengubah data.
+
 ## Fitur Shell v2
 
 - Window native (bukan browser) dengan ikon BL custom, DPI-aware

@@ -65,8 +65,8 @@ public partial class MainWindow : Window
             // Keep WebView2 data (cache, localStorage) per-user so the app stays
             // writable when installed to read-only locations later.
             string userDataFolder = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Banklycs", "WebView2");
+                Banklycs.StudioServer.ResolveAppDataDir(),
+                "WebView2");
             var environment = await CoreWebView2Environment.CreateAsync(
                 userDataFolder: userDataFolder);
             await WebView.EnsureCoreWebView2Async(environment);
@@ -265,8 +265,8 @@ public partial class MainWindow : Window
         try
         {
             string path = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Banklycs", "config.json");
+                Banklycs.StudioServer.ResolveAppDataDir(),
+                "config.json");
             if (!File.Exists(path)) return defaultValue;
             using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
             if (doc.RootElement.TryGetProperty(key, out var value))

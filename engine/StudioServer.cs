@@ -151,6 +151,24 @@ namespace Banklycs
             return string.IsNullOrEmpty(res) ? "Presentation" : res;
         }
 
+        public static string ResolveAppDataDir()
+        {
+            string? overridePath = Environment.GetEnvironmentVariable("BANKLYCS_APPDATA_DIR");
+            if (!string.IsNullOrWhiteSpace(overridePath))
+            {
+                string candidate = overridePath.Trim();
+                if (!Path.IsPathFullyQualified(candidate))
+                {
+                    throw new ArgumentException("BANKLYCS_APPDATA_DIR must be an absolute path.", nameof(overridePath));
+                }
+                return Path.GetFullPath(candidate);
+            }
+
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Banklycs");
+        }
+
         public static string ResolveProPresenterDir()
         {
             try
@@ -579,7 +597,7 @@ namespace Banklycs
             ProPresenterDir = ResolveProPresenterDir();
             EnsureProPresenterBanklycsTheme();
 
-            ConfigDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Banklycs");
+            ConfigDir = ResolveAppDataDir();
             ConfigPath = Path.Combine(ConfigDir, "config.json");
             InjectStatePath = Path.Combine(ConfigDir, "inject_state.json");
             LoadAppConfig();
@@ -816,6 +834,7 @@ namespace Banklycs
                             catalog_stale = dbMtime > CatalogLoadedAt,
                             catalog_version = CatalogVersion,
                             propresenter_dir = ProPresenterDir,
+                            config_dir = ConfigDir,
                             banks_count = banksCount,
                             project_root = ProjectRoot,
                             db_path = DatabasePath,

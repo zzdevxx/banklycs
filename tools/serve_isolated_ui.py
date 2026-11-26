@@ -35,12 +35,24 @@ def fetch_status(port: int) -> dict | None:
     return None
 
 
-def wait_for_engine(pro_dir: Path, first_port: int, last_port: int, timeout_s: float) -> tuple[int, dict] | None:
+def wait_for_engine(
+    pro_dir: Path,
+    config_dir: Path,
+    first_port: int,
+    last_port: int,
+    timeout_s: float,
+) -> tuple[int, dict] | None:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         for port in range(first_port, last_port + 1):
             status = fetch_status(port)
             if status is not None and status.get("propresenter_dir") == str(pro_dir):
+                if status.get("config_dir") != str(config_dir):
+                    raise RuntimeError(
+                        "StudioServer does not support isolated app data: "
+                        f"config_dir={status.get('config_dir')!r}, expected {str(config_dir)!r}; "
+                        "refusing to expose the UI"
+                    )
                 return port, status
         time.sleep(0.25)
     return None
@@ -66,64 +78,73 @@ def main() -> int:
     (pro_dir / "Libraries" / "Banks").mkdir(parents=True)
     (pro_dir / "Playlists").mkdir(parents=True)
     local_appdata = temp_root / "LocalAppData"
-    local_appdata.mkdir()
+    config_dir = local_appdata / "Banklycs"
+    config_dir.mkdir(parents=True)
     engine_log = temp_root / "engine.log"
 
     saved_port_bytes = PORT_FILE.read_bytes() if PORT_FILE.is_file() else None
-    env = os.environ.copy()
-    env["BANKLYCS_PROPRESENTER_DIR"] = str(pro_dir)
-    env["LOCALAPPDATA"] = str(local_appdata)
+    process: subprocess.Popen[bytes] | None = None
+    try:
+        env = os.environ.copy()
+        env["BANKLYCS_PROPRESENTER_DIR"] = str(pro_dir)
+        env["LOCALAPPDATA"] = str(local_appdata)
+        env["BANKLYCS_APPDATA_DIR"] = str(config_dir)
 
-    with engine_log.open("w", encoding="utf-8") as log_handle:
-        process = subprocess.Popen(
-            [str(EXE_PATH), "serve", "--no-browser"],
-            cwd=str(ROOT),
-            env=env,
-            stdout=log_handle,
-            stderr=subprocess.STDOUT,
-        )
+        with engine_log.open("w", encoding="utf-8") as log_handle:
+            process = subprocess.Popen(
+                [str(EXE_PATH), "serve", "--no-browser"],
+                cwd=str(ROOT),
+                env=env,
+                stdout=log_handle,
+                stderr=subprocess.STDOUT,
+            )
+            try:
+                found = wait_for_engine(pro_dir, config_dir, args.first_port, args.last_port, args.timeout)
+                if found is None:
+                    print(f"[FAIL] Engine did not become ready; log: {engine_log}", file=sys.stderr)
+                    return 1
+
+                port, status = found
+                info = {
+                    "url": f"http://127.0.0.1:{port}",
+                    "pid": process.pid,
+                    "proPresenterDir": str(pro_dir),
+                    "localAppData": str(local_appdata),
+                    "configDir": status.get("config_dir"),
+                    "engineLog": str(engine_log),
+                    "catalogSongs": status.get("total_songs"),
+                    "appVersion": status.get("app_version"),
+                }
+                print(json.dumps(info, indent=2), flush=True)
+                print("owned_process=this script only; press Ctrl+C to stop it.", flush=True)
+                while process.poll() is None:
+                    time.sleep(1)
+                print(f"[WARN] Engine exited with code {process.returncode}; log: {engine_log}", file=sys.stderr)
+                return process.returncode or 0
+            except KeyboardInterrupt:
+                print("\n[INFO] Stopping owned engine process.", file=sys.stderr)
+                return 130
+    finally:
         try:
-            found = wait_for_engine(pro_dir, args.first_port, args.last_port, args.timeout)
-            if found is None:
-                print(f"[FAIL] Engine did not become ready; log: {engine_log}", file=sys.stderr)
-                return 1
-
-            port, status = found
-            info = {
-                "url": f"http://127.0.0.1:{port}",
-                "pid": process.pid,
-                "proPresenterDir": str(pro_dir),
-                "localAppData": str(local_appdata),
-                "engineLog": str(engine_log),
-                "catalogSongs": status.get("total_songs"),
-                "appVersion": status.get("app_version"),
-            }
-            print(json.dumps(info, indent=2), flush=True)
-            print("owned_process=this script only; press Ctrl+C to stop it.", flush=True)
-            while process.poll() is None:
-                time.sleep(1)
-            print(f"[WARN] Engine exited with code {process.returncode}; log: {engine_log}", file=sys.stderr)
-            return process.returncode or 0
-        except KeyboardInterrupt:
-            print("\n[INFO] Stopping owned engine process.", file=sys.stderr)
-            return 130
-        finally:
-            if process.poll() is None:
+            if process is not None and process.poll() is None:
                 process.terminate()
                 try:
                     process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait(timeout=5)
-            if saved_port_bytes is None:
-                if PORT_FILE.is_file():
-                    PORT_FILE.unlink()
-            else:
-                PORT_FILE.write_bytes(saved_port_bytes)
-            if args.keep_temp:
-                print(f"[INFO] Temporary session kept at {temp_root}", file=sys.stderr)
-            else:
-                shutil.rmtree(temp_root, ignore_errors=True)
+        finally:
+            try:
+                if saved_port_bytes is None:
+                    if PORT_FILE.is_file():
+                        PORT_FILE.unlink()
+                else:
+                    PORT_FILE.write_bytes(saved_port_bytes)
+            finally:
+                if args.keep_temp:
+                    print(f"[INFO] Temporary session kept at {temp_root}", file=sys.stderr)
+                else:
+                    shutil.rmtree(temp_root, ignore_errors=True)
 
 
 if __name__ == "__main__":

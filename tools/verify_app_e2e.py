@@ -38,13 +38,10 @@ def http_json(url: str, method: str = "GET", payload: dict | None = None, header
         return err.code, json.loads(raw) if raw.strip().startswith("{") else {"raw": raw}
 
 
-def main() -> int:
+def _run_e2e() -> int:
     if not EXE_PATH.is_file():
         print(f"[FAIL] Engine binary not found: {EXE_PATH}")
         return 1
-
-    port_file = ROOT / "engine" / "last_port.txt"
-    saved_port_bytes = port_file.read_bytes() if port_file.is_file() else None
 
     with tempfile.TemporaryDirectory(prefix="banklycs_e2e_pro7_") as tmp_dir:
         tmp_root = Path(tmp_dir)
@@ -52,11 +49,13 @@ def main() -> int:
         (tmp_pro / "Libraries" / "Banks").mkdir(parents=True, exist_ok=True)
         (tmp_pro / "Playlists").mkdir(parents=True, exist_ok=True)
         local_appdata = tmp_root / "LocalAppData"
-        local_appdata.mkdir(parents=True, exist_ok=True)
+        config_dir = local_appdata / "Banklycs"
+        config_dir.mkdir(parents=True, exist_ok=True)
 
         env = os.environ.copy()
         env["BANKLYCS_PROPRESENTER_DIR"] = str(tmp_pro)
         env["LOCALAPPDATA"] = str(local_appdata)
+        env["BANKLYCS_APPDATA_DIR"] = str(config_dir)
 
         proc = subprocess.Popen(
             [str(EXE_PATH), "serve", "--no-browser"],
@@ -74,9 +73,15 @@ def main() -> int:
                     try:
                         code, st = http_json(f"http://127.0.0.1:{cand}/api/status")
                         if code == 200 and st.get("propresenter_dir") == str(tmp_pro):
+                            if st.get("config_dir") != str(config_dir):
+                                raise RuntimeError(
+                                    "StudioServer does not support isolated app data: "
+                                    f"config_dir={st.get('config_dir')!r}, expected {str(config_dir)!r}; "
+                                    "refusing to run E2E mutations"
+                                )
                             port = cand
                             break
-                    except Exception:
+                    except urllib.error.URLError:
                         pass
                 if port:
                     break
@@ -92,6 +97,8 @@ def main() -> int:
 
             # 1. Status & category counts parity
             _, status = http_json(f"{base}/api/status")
+            assert status["config_dir"] == str(config_dir), f"Unexpected config_dir: {status['config_dir']}"
+            assert status["propresenter_dir"] == str(tmp_pro), f"Unexpected propresenter_dir: {status['propresenter_dir']}"
             assert status["total_songs"] == 54204, f"Expected 54204 songs, got {status['total_songs']}"
             assert status["app_version"] == "2.7", f"Expected app_version 2.7, got {status['app_version']}"
 
@@ -265,11 +272,19 @@ def main() -> int:
                 proc.stdout.close()
             if proc.stderr is not None:
                 proc.stderr.close()
-            if saved_port_bytes is None:
-                if port_file.is_file():
-                    port_file.unlink()
-            else:
-                port_file.write_bytes(saved_port_bytes)
+
+
+def main() -> int:
+    port_file = ROOT / "engine" / "last_port.txt"
+    saved_port_bytes = port_file.read_bytes() if port_file.is_file() else None
+    try:
+        return _run_e2e()
+    finally:
+        if saved_port_bytes is None:
+            if port_file.is_file():
+                port_file.unlink()
+        else:
+            port_file.write_bytes(saved_port_bytes)
 
 
 if __name__ == "__main__":
