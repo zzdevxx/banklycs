@@ -809,9 +809,7 @@
     }
   }
 
-  // ============================================================
   // Update center: dual channels (app v2.x / database timestamp)
-  // ============================================================
 
   function formatDbVersion(iso) {
     if (!iso) return '-';
